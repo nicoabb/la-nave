@@ -7,29 +7,43 @@ import {
   Gauge,
   ListPlus,
   Plus,
+  Settings,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import { EstadoRed } from '../components/comunes'
+import { Hoja } from '../components/Hoja'
+import { HojaCorreccion } from '../components/HojaCorreccion'
+import { descripcionVehiculo, useGasolina, useKilometraje, useVehiculoActivo } from '../db/hooks'
+import { km, kmPorLitro, numero } from '../lib/formato'
 
 export default function Inicio() {
-  const [hojaAbierta, setHojaAbierta] = useState(false)
+  const vehiculo = useVehiculoActivo()
+  const kmTotal = useKilometraje(vehiculo.id)
+  const { analisis, kmDia } = useGasolina(vehiculo.id)
+  const [hoja, setHoja] = useState<'registrar' | 'corregir' | null>(null)
+  const cerrar = () => setHoja(null)
 
   return (
     <main className="pantalla">
       <header style={{ paddingTop: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p className="subtitulo" style={{ margin: 0 }}>Tu vehículo</p>
-          <EstadoRed />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <p className="subtitulo" style={{ margin: 0 }}>{descripcionVehiculo(vehiculo)}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <EstadoRed />
+            <Link to="/configuracion" className="icono-btn" aria-label="Configuración">
+              <Settings size={20} strokeWidth={1.8} />
+            </Link>
+          </div>
         </div>
-        <div className="cifra" style={{ marginTop: 8 }}>— km</div>
+        <div className="cifra" style={{ marginTop: 4 }}>{kmTotal != null ? km(kmTotal) : '— km'}</div>
         <p className="subtitulo">
           Se suma solo con cada carga ·{' '}
-          <button className="enlace" disabled>Corregir</button>
+          <button className="enlace" onClick={() => setHoja('corregir')}>Corregir</button>
         </p>
       </header>
 
-      {/* Próximo cambio de aceite */}
+      {/* Próximo cambio de aceite (fase 2) */}
       <section className="tarjeta">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="icono-caja">
@@ -43,8 +57,22 @@ export default function Inicio() {
       </section>
 
       <div className="fila-2">
-        <TarjetaChica Icono={Fuel} color="var(--cielo)" titulo="Rendimiento gasolina" />
-        <TarjetaChica Icono={Gauge} color="var(--lavanda)" titulo="Km por día" />
+        <TarjetaChica
+          Icono={Fuel}
+          color="var(--cielo)"
+          titulo="Rendimiento gasolina"
+          valor={analisis.promedio ? numero(analisis.promedio, 1) : '—'}
+          unidad="km/L"
+          detalle={analisis.ultima ? `Última: ${kmPorLitro(analisis.ultima.kmL)}` : 'Sin cargas todavía'}
+        />
+        <TarjetaChica
+          Icono={Gauge}
+          color="var(--lavanda)"
+          titulo="Km por día"
+          valor={kmDia != null ? numero(kmDia) : '—'}
+          unidad="km/día"
+          detalle={kmDia != null ? 'Promedio de la semana' : 'Hacen falta 2 cargas'}
+        />
       </div>
 
       <section className="tarjeta">
@@ -55,55 +83,69 @@ export default function Inicio() {
         <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>
       </section>
 
-      <button className="fab" aria-label="Registrar" onClick={() => setHojaAbierta(true)}>
+      <button className="fab" aria-label="Registrar" onClick={() => setHoja('registrar')}>
         <Plus size={26} strokeWidth={2} />
       </button>
 
-      {hojaAbierta && <HojaRegistrar onCerrar={() => setHojaAbierta(false)} />}
+      {hoja === 'registrar' && <HojaRegistrar onCerrar={cerrar} onCorregir={() => setHoja('corregir')} />}
+      {hoja === 'corregir' && <HojaCorreccion vehiculoId={vehiculo.id} kmEstimado={kmTotal} onCerrar={cerrar} />}
     </main>
   )
 }
 
-function TarjetaChica({ Icono, color, titulo }: { Icono: LucideIcon; color: string; titulo: string }) {
+function TarjetaChica({
+  Icono,
+  color,
+  titulo,
+  valor,
+  unidad,
+  detalle,
+}: {
+  Icono: LucideIcon
+  color: string
+  titulo: string
+  valor: string
+  unidad: string
+  detalle: string
+}) {
   return (
-    <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <span className="icono-caja">
         <Icono size={20} strokeWidth={1.8} color={color} aria-hidden />
       </span>
       <span className="muted mini">{titulo}</span>
-      <span className="cifra" style={{ fontSize: 24 }}>—</span>
+      <span>
+        <span className="cifra" style={{ fontSize: 26 }}>{valor}</span>{' '}
+        <span className="muted mini">{unidad}</span>
+      </span>
+      <span className="muted mini">{detalle}</span>
     </section>
   )
 }
 
-function HojaRegistrar({ onCerrar }: { onCerrar: () => void }) {
+function HojaRegistrar({ onCerrar, onCorregir }: { onCerrar: () => void; onCorregir: () => void }) {
   const navegar = useNavigate()
-  const ir = (ruta: string) => {
+  const ir = (ruta: string, state?: object) => {
     onCerrar()
-    navegar(ruta)
+    navegar(ruta, { state })
   }
 
   return (
-    <div className="hoja-fondo" onClick={onCerrar}>
-      <div className="hoja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo" onClick={(e) => e.stopPropagation()}>
-        <div className="hoja__agarre" />
-        <h2 id="hoja-titulo" className="titulo-seccion" style={{ marginBottom: 4 }}>¿Qué vas a registrar?</h2>
+    <Hoja titulo="¿Qué vas a registrar?" onCerrar={onCerrar}>
+      <button className="opcion opcion--destacada" onClick={() => ir('/gasolina', { foco: true })}>
+        <span className="icono-caja"><Fuel size={20} strokeWidth={1.8} /></span>
+        <span className="opcion__texto">
+          Carga de gasolina
+          <small>Lo más frecuente · también actualiza el kilometraje</small>
+        </span>
+      </button>
+      <Opcion Icono={Wrench} texto="Visita al taller" />
+      <Opcion Icono={ClipboardCheck} texto="Revisión semanal del capó" />
+      <Opcion Icono={ListPlus} texto="Nuevo pendiente" />
+      <Opcion Icono={Gauge} texto="Corregir kilometraje" detalle="Si el tablero marca otra cosa" onClick={onCorregir} />
 
-        <button className="opcion opcion--destacada" onClick={() => ir('/gasolina')}>
-          <span className="icono-caja"><Fuel size={20} strokeWidth={1.8} /></span>
-          <span className="opcion__texto">
-            Carga de gasolina
-            <small>Lo más frecuente · también actualiza el kilometraje</small>
-          </span>
-        </button>
-        <Opcion Icono={Wrench} texto="Visita al taller" onClick={() => ir('/taller')} />
-        <Opcion Icono={ClipboardCheck} texto="Revisión semanal del capó" detalle="Aceite, refrigerante, frenos, dirección y cauchos" />
-        <Opcion Icono={ListPlus} texto="Nuevo pendiente" onClick={() => ir('/pendientes')} />
-        <Opcion Icono={Gauge} texto="Corregir kilometraje" />
-
-        <button className="btn btn--bloque" style={{ marginTop: 6 }} onClick={onCerrar}>Cancelar</button>
-      </div>
-    </div>
+      <button className="btn btn--bloque" style={{ marginTop: 6 }} onClick={onCerrar}>Cancelar</button>
+    </Hoja>
   )
 }
 

@@ -377,3 +377,151 @@ a {
   cursor: default;
 }
 
+
+/* ---------- Formularios ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fila-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.campo__etiqueta {
+  font-size: var(--fs-secundario);
+  font-weight: 600;
+}
+
+.campo__ayuda {
+  font-size: var(--fs-mini);
+  color: var(--text-muted);
+}
+
+.input {
+  width: 100%;
+  min-height: var(--tactil);
+  padding: 0 14px;
+  border-radius: var(--radio-control);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: dark;
+}
+
+.input:focus {
+  outline: 2px solid var(--lavanda);
+  outline-offset: -1px;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tactil);
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--lavanda);
+}
+
+.error {
+  color: var(--coral);
+  font-size: var(--fs-secundario);
+  margin: 0;
+}
+
+.resultado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+/* ---------- Avisos ---------- */
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: var(--fs-secundario);
+}
+
+.aviso--suave {
+  background: var(--mantequilla);
+  color: var(--on-mantequilla);
+}
+.aviso--fuerte {
+  background: var(--coral);
+  color: var(--on-coral);
+}
+.aviso--positiva {
+  background: var(--menta);
+  color: var(--on-menta);
+}
+
+/* ---------- Listas ---------- */
+.lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.lista__fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--surface-2);
+  background: none;
+  text-align: left;
+}
+
+.lista__fila:last-child {
+  border-bottom: 0;
+}
+
+.btn--peligro {
+  color: var(--coral);
+  border-color: var(--coral);
+}
+
+.icono-btn {
+  width: var(--tactil);
+  height: var(--tactil);
+  border-radius: 12px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+
+.hoja {
+  max-height: 92dvh;
+  overflow-y: auto;
+}

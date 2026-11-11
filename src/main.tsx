@@ -13,6 +13,9 @@ import './styles/tokens.css'
 import './styles/global.css'
 import App from './App'
 
+// Pide al navegador no borrar los datos locales cuando le falte espacio
+navigator.storage?.persist?.().catch(() => {})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
