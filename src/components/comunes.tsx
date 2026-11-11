@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { CircleAlert, CircleCheck, Clock } from 'lucide-react'
 import { useEnLinea } from '../lib/useEnLinea'
+import type { Estado } from '../lib/tareas'
 
-export type Estado = 'urgente' | 'pronto' | 'en-orden'
+export type { Estado }
 
 const ESTADOS: Record<Estado, { texto: string; Icono: LucideIcon }> = {
   urgente: { texto: 'Urgente', Icono: CircleAlert },
@@ -49,6 +50,31 @@ export function Vacio({ Icono, children, color = 'var(--text-muted)' }: { Icono:
         <Icono size={20} strokeWidth={1.8} color={color} aria-hidden />
       </span>
       {children}
+    </div>
+  )
+}
+
+const COLOR_ESTADO: Record<Estado, string> = {
+  urgente: 'var(--coral)',
+  pronto: 'var(--mantequilla)',
+  'en-orden': 'var(--menta)',
+}
+
+export function PuntoEstado({ estado }: { estado: Estado }) {
+  return <span className="punto" style={{ background: COLOR_ESTADO[estado], width: 10, height: 10 }} aria-hidden />
+}
+
+/** Barra de progreso con su % y texto; el color sigue al semáforo. */
+export function BarraProgreso({ etiqueta, pct, estado, detalle }: { etiqueta: string; pct: number; estado: Estado; detalle: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-mini)' }}>
+        <span style={{ fontWeight: 600 }}>{etiqueta}</span>
+        <span className="muted">{Math.round(Math.max(0, pct) * 100)} % · {detalle}</span>
+      </div>
+      <div className="barra">
+        <div className="barra__relleno" style={{ width: `${Math.min(100, Math.max(2, pct * 100))}%`, background: COLOR_ESTADO[estado] }} />
+      </div>
     </div>
   )
 }

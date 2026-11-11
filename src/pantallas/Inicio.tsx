@@ -11,16 +11,29 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { EstadoRed } from '../components/comunes'
+import { BarraProgreso, ChipEstado, EstadoRed, PuntoEstado } from '../components/comunes'
 import { Hoja } from '../components/Hoja'
 import { HojaCorreccion } from '../components/HojaCorreccion'
-import { descripcionVehiculo, useGasolina, useKilometraje, useVehiculoActivo } from '../db/hooks'
-import { km, kmPorLitro, numero } from '../lib/formato'
+import type { TareaMantenimiento } from '../db/esquema'
+import {
+  descripcionVehiculo,
+  useGasolina,
+  useKilometraje,
+  useMantenimiento,
+  useUmbralPronto,
+  useVehiculoActivo,
+} from '../db/hooks'
+import { dinero, km, kmPorLitro, numero } from '../lib/formato'
+import { duracion, estadoDe, type EstadoTarea } from '../lib/tareas'
 
 export default function Inicio() {
   const vehiculo = useVehiculoActivo()
   const kmTotal = useKilometraje(vehiculo.id)
   const { analisis, kmDia } = useGasolina(vehiculo.id)
+  const mant = useMantenimiento(vehiculo.id)
+  const umbral = useUmbralPronto()
+  const navegar = useNavigate()
+  const aceite = mant?.estados.find((e) => e.tarea.clave === 'aceite_motor')
   const [hoja, setHoja] = useState<'registrar' | 'corregir' | null>(null)
   const cerrar = () => setHoja(null)
 
@@ -43,18 +56,7 @@ export default function Inicio() {
         </p>
       </header>
 
-      {/* Próximo cambio de aceite (fase 2) */}
-      <section className="tarjeta">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="icono-caja">
-            <Droplet size={20} strokeWidth={1.8} color="var(--mantequilla)" aria-hidden />
-          </span>
-          <h2 className="titulo-seccion">Próximo cambio de aceite</h2>
-        </div>
-        <p className="muted" style={{ margin: '14px 0 0' }}>
-          Aquí verás cuántos km y días faltan, con sus barras de progreso.
-        </p>
-      </section>
+      {aceite && <TarjetaAceite estado={aceite} costo={mant!.costo(aceite.tarea.id)} umbral={umbral} />}
 
       <div className="fila-2">
         <TarjetaChica
@@ -80,7 +82,19 @@ export default function Inicio() {
           <h2 className="titulo-seccion">Lo que viene</h2>
           <Link to="/pendientes" className="enlace mini">Ver todo</Link>
         </div>
-        <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>
+        {mant && mant.estados.length === 0 && <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>}
+        <div className="lista" style={{ marginTop: 4 }}>
+          {mant?.estados.slice(0, 3).map((e) => (
+            <button key={e.tarea.id} className="lista__fila" onClick={() => navegar(rutaParaHacer(e.tarea))}>
+              <PuntoEstado estado={e.estado} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontWeight: 600 }}>{e.tarea.nombre}</span>
+                <span className="muted mini">{e.texto}</span>
+              </span>
+              <ChipEstado estado={e.estado} />
+            </button>
+          ))}
+        </div>
       </section>
 
       <button className="fab" aria-label="Registrar" onClick={() => setHoja('registrar')}>
@@ -90,6 +104,71 @@ export default function Inicio() {
       {hoja === 'registrar' && <HojaRegistrar onCerrar={cerrar} onCorregir={() => setHoja('corregir')} />}
       {hoja === 'corregir' && <HojaCorreccion vehiculoId={vehiculo.id} kmEstimado={kmTotal} onCerrar={cerrar} />}
     </main>
+  )
+}
+
+/** Adónde ir para marcar una tarea como hecha. */
+export function rutaParaHacer(t: TareaMantenimiento): string {
+  return t.es_revision ? `/revision/${t.id}` : `/taller/visita/nueva?tarea=${t.id}`
+}
+
+function TarjetaAceite({
+  estado: e,
+  costo,
+  umbral,
+}: {
+  estado: EstadoTarea<TareaMantenimiento>
+  costo: { usd: number; veces: number } | null
+  umbral: number
+}) {
+  const navegar = useNavigate()
+  return (
+    <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="icono-caja">
+          <Droplet size={20} strokeWidth={1.8} color="var(--mantequilla)" aria-hidden />
+        </span>
+        <h2 className="titulo-seccion" style={{ flex: 1 }}>Próximo cambio de aceite</h2>
+        <ChipEstado estado={e.estado} />
+      </div>
+
+      <div className="cifra" style={{ fontSize: 30 }}>{e.texto}</div>
+
+      {e.desconocida ? (
+        <p className="muted" style={{ margin: 0 }}>
+          Anota cuándo fue el último cambio en{' '}
+          <Link to="/configuracion/tareas" className="enlace">Tareas periódicas</Link>, o registra la próxima visita.
+        </p>
+      ) : (
+        <>
+          {e.pctKm !== null && (
+            <BarraProgreso
+              etiqueta="Kilómetros"
+              pct={e.pctKm}
+              estado={estadoDe(e.pctKm, umbral)}
+              detalle={e.restanteKm! > 0 ? `faltan ${km(e.restanteKm!)}` : `vencido por ${km(-e.restanteKm!)}`}
+            />
+          )}
+          {e.pctTiempo !== null && (
+            <BarraProgreso
+              etiqueta="Tiempo"
+              pct={e.pctTiempo}
+              estado={estadoDe(e.pctTiempo, umbral)}
+              detalle={e.restanteDias! > 0 ? `faltan ${duracion(e.restanteDias!)}` : `vencido por ${duracion(-e.restanteDias!)}`}
+            />
+          )}
+        </>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <span className="muted mini">
+          {costo
+            ? `≈ ${dinero(Math.round(costo.usd))} según ${costo.veces === 1 ? 'tu último' : `tus últimos ${costo.veces}`}`
+            : 'Sin estimado'}
+        </span>
+        <button className="enlace mini" onClick={() => navegar(rutaParaHacer(e.tarea))}>Registrar cambio</button>
+      </div>
+    </section>
   )
 }
 
@@ -139,8 +218,8 @@ function HojaRegistrar({ onCerrar, onCorregir }: { onCerrar: () => void; onCorre
           <small>Lo más frecuente · también actualiza el kilometraje</small>
         </span>
       </button>
-      <Opcion Icono={Wrench} texto="Visita al taller" />
-      <Opcion Icono={ClipboardCheck} texto="Revisión semanal del capó" />
+      <Opcion Icono={Wrench} texto="Visita al taller" detalle="Repuestos, servicios y mano de obra" onClick={() => ir('/taller/visita/nueva')} />
+      <Opcion Icono={ClipboardCheck} texto="Revisión semanal del capó" detalle="Aceite, refrigerante, frenos, dirección y cauchos" onClick={() => ir('/revision/revision_semanal')} />
       <Opcion Icono={ListPlus} texto="Nuevo pendiente" />
       <Opcion Icono={Gauge} texto="Corregir kilometraje" detalle="Si el tablero marca otra cosa" onClick={onCorregir} />
 

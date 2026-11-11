@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
+import { Campo } from '../components/Campo'
 import { FormVehiculo } from '../components/FormVehiculo'
 import { HojaCorreccion } from '../components/HojaCorreccion'
 import { BotonExportar, BotonRestaurar } from '../components/Respaldo'
-import { useCorrecciones, useKilometraje, useVehiculoActivo } from '../db/hooks'
-import { fechaLista, km } from '../lib/formato'
+import { useCorrecciones, useKilometraje, useUmbralPronto, useVehiculoActivo } from '../db/hooks'
+import { guardarMeta } from '../db/repo'
+import { fechaLista, km, leerEntero } from '../lib/formato'
 
 export default function Configuracion() {
   const vehiculo = useVehiculoActivo()
   const correcciones = useCorrecciones(vehiculo.id) ?? []
   const kmTotal = useKilometraje(vehiculo.id)
+  const umbral = useUmbralPronto()
   const [corrigiendo, setCorrigiendo] = useState(false)
 
   return (
@@ -43,6 +46,34 @@ export default function Configuracion() {
             </div>
           ))}
         </div>
+      </section>
+
+      <Link to="/configuracion/tareas" className="tarjeta" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="icono-caja">
+          <ListChecks size={20} strokeWidth={1.8} color="var(--lavanda)" aria-hidden />
+        </span>
+        <span style={{ flex: 1 }}>
+          <strong style={{ fontWeight: 600 }}>Tareas periódicas</strong>
+          <span className="muted mini" style={{ display: 'block' }}>Intervalos y última vez de cada mantenimiento</span>
+        </span>
+        <ChevronRight size={20} strokeWidth={1.8} color="var(--text-muted)" aria-hidden />
+      </Link>
+
+      <section className="tarjeta form">
+        <h2 className="titulo-seccion">Semáforo</h2>
+        <Campo etiqueta="Pasar a «Pronto» desde el (%)" ayuda="Del intervalo cumplido. Al 100 % pasa a «Urgente».">
+          <input
+            className="input"
+            inputMode="numeric"
+            defaultValue={Math.round(umbral * 100)}
+            key={umbral}
+            onBlur={(e) => {
+              const n = leerEntero(e.target.value)
+              if (n && n >= 50 && n < 100) guardarMeta('umbral_pronto', n / 100)
+              else e.target.value = String(Math.round(umbral * 100))
+            }}
+          />
+        </Campo>
       </section>
 
       <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

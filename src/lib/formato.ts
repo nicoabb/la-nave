@@ -65,3 +65,7 @@ export function leerEntero(texto: string): number | null {
 
 /** Número → texto editable con coma decimal */
 export const aTexto = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','))
+
+export const simboloMoneda = (m: 'USD' | 'VES') => (m === 'VES' ? 'Bs' : 'USD')
+/** 42 → "42 USD" ; 1250.5 en VES → "1.250,5 Bs" */
+export const dinero = (v: number, moneda: 'USD' | 'VES' = 'USD') => `${numero(v, 0, 2)} ${simboloMoneda(moneda)}`
