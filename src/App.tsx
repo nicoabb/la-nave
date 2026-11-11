@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { ProveedorAvisos } from './components/Aviso'
 import { BarraInferior } from './components/BarraInferior'
 import { useVehiculo, VehiculoContexto } from './db/hooks'
 import Bienvenida from './pantallas/Bienvenida'
@@ -24,6 +25,7 @@ export default function App() {
 
   return (
     <VehiculoContexto.Provider value={vehiculo}>
+      <ProveedorAvisos>
       <div className="app">
         <Routes>
           <Route path="/" element={<Inicio />} />
@@ -37,6 +39,7 @@ export default function App() {
         </Routes>
         <BarraInferior />
       </div>
+      </ProveedorAvisos>
     </VehiculoContexto.Provider>
   )
 }

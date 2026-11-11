@@ -3,7 +3,10 @@ import { Check, Plus } from 'lucide-react'
 import { db, type CargaGasolina, type Moneda } from '../db/esquema'
 import { actualizar, crear, guardarMeta, leerMeta } from '../db/repo'
 import { hoyISO } from '../lib/fechas'
-import { aTexto, kmPorLitro, leerNumero, numero } from '../lib/formato'
+import { aTexto, fechaLista, km as kmTexto, kmPorLitro, leerNumero, numero } from '../lib/formato'
+import { ordenar } from '../lib/gasolina'
+import { kmActual } from '../lib/kilometraje'
+import { useAviso } from './Aviso'
 import { Campo, Segmentado } from './Campo'
 
 interface Pendiente {
@@ -40,6 +43,7 @@ export function FormCarga({
   const [tasa, setTasa] = useState(aTexto(carga?.tasa_ves_usd))
   const [error, setError] = useState('')
   const [guardado, setGuardado] = useState(false)
+  const avisar = useAviso()
 
   // La tasa se prellena con la última usada (SPEC §5.5)
   useEffect(() => {
@@ -55,6 +59,28 @@ export function FormCarga({
   let vivo = '—'
   if (noFull) vivo = 'No se calcula'
   else if (kmN && litrosN) vivo = kmPorLitro((kmN + (pend?.km ?? 0)) / (litrosN + (pend?.litros ?? 0)))
+
+  /** Confirma la carga y dice cómo quedó el kilometraje (o por qué no sumó). */
+  async function avisarCargaNueva(fechaCarga: string, rendimientoTexto: string | null) {
+    const [correcciones, cargas] = await Promise.all([
+      db.odometer_corrections.where('vehicle_id').equals(vehiculoId).toArray(),
+      db.fuel_logs.where('vehicle_id').equals(vehiculoId).toArray(),
+    ])
+    const vivas = correcciones.filter((c) => !c.deleted)
+    const base = ordenar(vivas).at(-1)
+    const total = kmActual(vivas, cargas.filter((c) => !c.deleted))
+    const partes = [rendimientoTexto, total != null ? `Kilometraje: ${kmTexto(total)}` : null].filter(Boolean)
+
+    if (base && fechaCarga < base.fecha) {
+      avisar(
+        'Carga guardada',
+        `No suma al kilometraje porque es anterior a tu última lectura del tablero (${fechaLista(base.fecha)}).`,
+        'info',
+      )
+    } else {
+      avisar('Carga guardada', partes.join(' · '))
+    }
+  }
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
@@ -77,8 +103,14 @@ export function FormCarga({
     const datos = { fecha, km_recorridos: kmN, litros: litrosN, full: !noFull, ...pago }
     if (carga) {
       await actualizar(db.fuel_logs, carga.id, datos)
+      avisar('Cambios guardados')
     } else {
-      await crear(db.fuel_logs, { vehicle_id: vehiculoId, ...datos, nota: '', origen: 'manual' })
+      const delVehiculo = (await db.fuel_logs.where('vehicle_id').equals(vehiculoId).toArray()).filter((c) => !c.deleted)
+      const repetida = delVehiculo.some((c) => c.fecha === fecha && c.km_recorridos === kmN && c.litros === litrosN)
+      if (repetida && !window.confirm('Ya hay una carga igual registrada ese día. ¿Guardarla de todas formas?')) return
+
+      const nueva = await crear(db.fuel_logs, { vehicle_id: vehiculoId, ...datos, nota: '', origen: 'manual' })
+      await avisarCargaNueva(nueva.fecha, noFull ? null : vivo)
       setKm('')
       setLitros('')
       setFecha(hoyISO())

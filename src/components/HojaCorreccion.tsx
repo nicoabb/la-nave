@@ -3,6 +3,7 @@ import { db } from '../db/esquema'
 import { crear } from '../db/repo'
 import { hoyISO } from '../lib/fechas'
 import { km, leerEntero, numero } from '../lib/formato'
+import { useAviso } from './Aviso'
 import { Campo } from './Campo'
 import { Hoja } from './Hoja'
 
@@ -20,6 +21,7 @@ export function HojaCorreccion({
   const [fecha, setFecha] = useState(hoyISO())
   const [nota, setNota] = useState('')
   const [error, setError] = useState('')
+  const avisar = useAviso()
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
@@ -27,6 +29,7 @@ export function HojaCorreccion({
     if (!n || n <= 0) return setError('Escribe el kilometraje que marca el tablero.')
     if (!fecha) return setError('Escribe la fecha.')
     await crear(db.odometer_corrections, { vehicle_id: vehiculoId, fecha, km_total: n, nota: nota.trim() })
+    avisar('Kilometraje corregido', `Ahora: ${km(n)}`)
     onCerrar()
   }
 

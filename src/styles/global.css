@@ -525,3 +525,35 @@ a {
   max-height: 92dvh;
   overflow-y: auto;
 }
+/* ---------- Aviso flotante ---------- */
+.toast {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--alto-nav) + 16px + env(safe-area-inset-bottom));
+  width: min(calc(var(--ancho-max) - 2 * var(--pad-pantalla)), calc(100% - 2 * var(--pad-pantalla)));
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: var(--fs-secundario);
+  animation: toast-entra 0.2s ease-out;
+}
+
+.toast--ok {
+  background: var(--menta);
+  color: var(--on-menta);
+}
+.toast--info {
+  background: var(--mantequilla);
+  color: var(--on-mantequilla);
+}
+
+@keyframes toast-entra {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
