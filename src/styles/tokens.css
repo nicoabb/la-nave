@@ -1,0 +1,48 @@
+/* Sistema visual — SPEC.md §3. Solo modo oscuro. */
+:root {
+  /* Paleta */
+  --bg: #15161c;
+  --surface: #1e2029;
+  --surface-2: #2a2d3a;
+  --border: #3a3e4e;
+  --text: #ecedf3;
+  --text-muted: #a3a7b7;
+
+  --lavanda: #c3b6f2;
+  --cielo: #a7d3f2;
+  --menta: #a8e6cf;
+  --mantequilla: #f6e3a1;
+  --coral: #f2a7a0;
+
+  /* Texto sobre acentos */
+  --on-lavanda: #1c1633;
+  --on-cielo: #0e2a3d;
+  --on-menta: #0f3326;
+  --on-mantequilla: #3a2e08;
+  --on-coral: #3a1512;
+
+  /* Estados del semáforo */
+  --estado-urgente: var(--coral);
+  --estado-pronto: var(--mantequilla);
+  --estado-en-orden: var(--menta);
+
+  /* Tipografía */
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --fs-cifra: 36px;
+  --fs-titulo: 28px;
+  --fs-seccion: 17px;
+  --fs-cuerpo: 15px;
+  --fs-secundario: 13px;
+  --fs-mini: 12px;
+
+  /* Forma y espaciado */
+  --radio-tarjeta: 20px;
+  --radio-control: 12px;
+  --radio-chip: 999px;
+  --pad-pantalla: 20px;
+  --gap-bloque: 16px;
+  --tactil: 44px;
+  --ancho-max: 480px;
+  --alto-nav: 64px;
+}

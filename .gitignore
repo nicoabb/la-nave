@@ -1,0 +1,18 @@
+node_modules/
+dist/
+dev-dist/
+.env
+.env.*
+!.env.example
+*.local
+
+# Datos personales de importación (Keep)
+Takeout/
+import/
+
+.DS_Store
+Thumbs.db
+
+# Documentos con datos del carro: solo en esta computadora
+SPEC.md
+CLAUDE.md

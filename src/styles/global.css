@@ -1,0 +1,379 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-cuerpo);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* 16 px en inputs para evitar el zoom en móvil */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- Estructura ---------- */
+.app {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+}
+
+.pantalla {
+  padding: calc(16px + env(safe-area-inset-top)) var(--pad-pantalla)
+    calc(var(--alto-nav) + 32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-bloque);
+}
+
+.encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-titulo);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.subtitulo {
+  color: var(--text-muted);
+  font-size: var(--fs-secundario);
+  margin: 4px 0 0;
+}
+
+.titulo-seccion {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-seccion);
+  margin: 0;
+}
+
+.cifra {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-cifra);
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.mini {
+  font-size: var(--fs-mini);
+}
+
+/* ---------- Tarjetas ---------- */
+.tarjeta {
+  background: var(--surface);
+  border-radius: var(--radio-tarjeta);
+  padding: 18px;
+}
+
+.tarjeta--elevada {
+  background: var(--surface-2);
+}
+
+.fila-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.icono-caja {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 28px 18px;
+  color: var(--text-muted);
+}
+
+.vacio p {
+  margin: 0;
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  min-height: var(--tactil);
+  padding: 0 16px;
+  border-radius: var(--radio-control);
+  border: 1px solid var(--border);
+  background: transparent;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn--primario {
+  background: var(--lavanda);
+  color: var(--on-lavanda);
+  border-color: var(--lavanda);
+}
+
+.btn--bloque {
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Chips de estado ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radio-chip);
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip--urgente {
+  background: var(--coral);
+  color: var(--on-coral);
+}
+.chip--pronto {
+  background: var(--mantequilla);
+  color: var(--on-mantequilla);
+}
+.chip--en-orden {
+  background: var(--menta);
+  color: var(--on-menta);
+}
+.chip--neutro {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+/* ---------- Pestañas segmentadas ---------- */
+.segmentado {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface);
+  border-radius: var(--radio-control);
+  padding: 4px;
+  gap: 4px;
+}
+
+.segmentado button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.segmentado button[aria-pressed='true'] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ---------- Barra inferior ---------- */
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--surface);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav__lista {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  height: var(--alto-nav);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.nav__item.active {
+  color: var(--lavanda);
+}
+
+/* ---------- Botón flotante + ---------- */
+.fab {
+  position: fixed;
+  z-index: 11;
+  right: max(var(--pad-pantalla), calc((100vw - var(--ancho-max)) / 2 + var(--pad-pantalla)));
+  bottom: calc(var(--alto-nav) + 16px + env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 0;
+  background: var(--lavanda);
+  color: var(--on-lavanda);
+  display: grid;
+  place-items: center;
+}
+
+/* ---------- Hoja inferior ---------- */
+.hoja-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(8, 9, 12, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hoja {
+  width: 100%;
+  max-width: var(--ancho-max);
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  padding: 10px var(--pad-pantalla) calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hoja__agarre {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 0 auto 8px;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 0;
+  background: var(--surface-2);
+  text-align: left;
+}
+
+.opcion--destacada {
+  background: var(--lavanda);
+  color: var(--on-lavanda);
+}
+
+.opcion--destacada .icono-caja {
+  background: rgba(28, 22, 51, 0.12);
+}
+
+.opcion__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.opcion__texto small {
+  font-weight: 400;
+  font-size: var(--fs-mini);
+  opacity: 0.8;
+}
+
+/* ---------- Aviso de conexión ---------- */
+.estado-red {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-mini);
+  color: var(--text-muted);
+}
+
+.punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.enlace {
+  color: var(--lavanda);
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+/* ---------- Computadora ---------- */
+@media (min-width: 600px) {
+  .app {
+    border-left: 1px solid var(--surface);
+    border-right: 1px solid var(--surface);
+  }
+}
+
+.opcion:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
