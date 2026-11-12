@@ -112,6 +112,7 @@ function TarjetaVisita({
             {fechaTarjeta(visita.fecha)}
             {visita.km != null && ` · ${km(visita.km)}`}
             {visita.taller && ` · ${visita.taller}`}
+            {visita.proveedor && ` · ${visita.proveedor}`}
           </span>
         </span>
         <span className="cifra" style={{ fontSize: 17, whiteSpace: 'nowrap' }}>{dinero(total, visita.moneda)}</span>
@@ -148,7 +149,7 @@ function TarjetaVisita({
               <strong>Total</strong>
               <span className="muted mini" style={{ display: 'block' }}>
                 Pagado en {visita.moneda === 'VES' ? 'Bs' : 'USD'}
-                {visita.moneda === 'VES' && visita.tasa_ves_usd && ` · tasa guardada (${numero(visita.tasa_ves_usd, 0, 2)} Bs/USD)`}
+                {visita.moneda === 'VES' && visita.tasa_ves_usd && ` · ${visita.tasa_origen === 'estimada' ? 'tasa estimada' : visita.tasa_origen === 'wallet' ? 'tasa de Wallet' : 'tasa guardada'} (${numero(visita.tasa_ves_usd, 0, 2)} Bs/USD)`}
               </span>
             </span>
             <span style={{ textAlign: 'right' }}>

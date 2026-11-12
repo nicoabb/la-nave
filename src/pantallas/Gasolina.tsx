@@ -81,9 +81,13 @@ export default function Gasolina() {
                 <button key={c.id} className="lista__fila" onClick={() => setEditando(c)}>
                   <span style={{ flex: 1 }}>
                     <span style={{ display: 'block', fontWeight: 600 }}>{fechaLista(c.fecha)}</span>
-                    <span className="muted mini">{kmViaje(c.km_recorridos)} · {litros(c.litros)}</span>
+                    <span className="muted mini">{c.km_recorridos != null ? kmViaje(c.km_recorridos) : 'Sin km'} · {litros(c.litros)}</span>
                   </span>
-                  {c.full ? (
+                  {c.full === null ? (
+                    <span className="chip chip--neutro">¿Full?</span>
+                  ) : c.full && c.km_recorridos == null ? (
+                    <span className="chip chip--neutro">Sin km</span>
+                  ) : c.full ? (
                     <span className="cifra" style={{ fontSize: 18, color: analisis.anomalos.has(c.id) ? 'var(--coral)' : 'var(--cielo)' }}>
                       {kmL ? numero(kmL, 1) : '—'} <span className="mini muted" style={{ fontFamily: 'var(--font-body)' }}>km/L</span>
                     </span>

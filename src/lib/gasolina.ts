@@ -5,9 +5,9 @@ export interface CargaBase {
   id: string
   fecha: string
   created_at: string
-  km_recorridos: number
+  km_recorridos: number | null
   litros: number
-  full: boolean
+  full: boolean | null // null = desconocido
 }
 
 /** Un tramo va de un full al siguiente: suma las cargas no full que haya en medio. */
@@ -35,13 +35,23 @@ export function ordenar<T extends { fecha: string; created_at: string }>(xs: rea
   return [...xs].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.created_at.localeCompare(b.created_at))
 }
 
+/** Una carga full con km sirve para el rendimiento; sin km o con full desconocido, no. */
+export const cuentaParaRendimiento = (c: CargaBase) => c.full === true && c.km_recorridos != null
+
 export function calcularTramos(cargas: readonly CargaBase[]) {
   const tramos: Tramo[] = []
   let km = 0
   let litros = 0
   let n = 0
   for (const c of ordenar(cargas)) {
-    km += c.km_recorridos
+    // Full desconocido, o full sin km: corta la cadena (no se puede medir ese tramo)
+    if (c.full === null || (c.full && c.km_recorridos == null)) {
+      km = 0
+      litros = 0
+      n = 0
+      continue
+    }
+    km += c.km_recorridos ?? 0
     litros += c.litros
     n++
     if (c.full) {
@@ -146,7 +156,7 @@ export function analizar(todos: readonly Tramo[], reinicio: string | null = null
  * carga se reparten entre los días transcurridos desde la carga anterior.
  */
 export function kmPorDia(cargas: readonly CargaBase[], dias = 7): number | null {
-  const cs = ordenar(cargas)
+  const cs = ordenar(cargas.filter((c) => c.km_recorridos != null)) as (CargaBase & { km_recorridos: number })[]
   if (cs.length < 2) return null
   const fin = diaNum(cs[cs.length - 1].fecha)
   const inicio = fin - dias // exclusivo

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { FileText, Fuel, Plus, Receipt, Wrench, type LucideIcon } from 'lucide-react'
+import { CircleDot, FileText, Fuel, Plus, Receipt, ShieldCheck, Wrench, type LucideIcon } from 'lucide-react'
 import { Segmentado } from '../components/Campo'
 import { Encabezado, Vacio } from '../components/comunes'
 import { HojaGasto } from '../components/HojaGasto'
@@ -42,13 +42,18 @@ export default function Gastos() {
     async () => (await db.expenses.where('vehicle_id').equals(vehiculo.id).toArray()).filter((g) => !g.deleted),
     [vehiculo.id],
   )
+  // Eventos de cauchos con monto (p. ej. el aire): suman al taller, sistema Cauchos
+  const eventos = useLiveQuery(
+    async () => (await db.tire_events.where('vehicle_id').equals(vehiculo.id).toArray()).filter((e) => !e.deleted && e.monto != null),
+    [vehiculo.id],
+  )
   const vistaGuardada = useLiveQuery(async () => (await db.meta.get('vista_gastos'))?.valor as Vista | undefined)
   const vista: Vista = vistaGuardada ?? 'USD'
   const [hoja, setHoja] = useState<Gasto | 'nuevo' | null>(null)
   const [verTodos, setVerTodos] = useState(false)
 
   const datos = useMemo(() => {
-    if (!cargas || !mant || !gastos) return null
+    if (!cargas || !mant || !gastos || !eventos) return null
     const visitaPorId = new Map(mant.visitas.map((v) => [v.id, v]))
 
     // Montos por categoría (y del taller, por sistema)
@@ -61,19 +66,24 @@ export default function Gastos() {
         const v = visitaPorId.get(i.visit_id)!
         return { i, v, m: { monto: i.monto, moneda: v.moneda, tasa: v.tasa_ves_usd, monto_usd: i.monto_usd } as Monto }
       })
+    const deEvento = eventos.map((e) => ({ e, m: { monto: e.monto, moneda: e.moneda, tasa: e.tasa_ves_usd, monto_usd: e.monto_usd } as Monto }))
     const deGasto = gastos.map((g) => ({ g, m: { monto: g.monto, moneda: g.moneda, tasa: g.tasa_ves_usd, monto_usd: g.monto_usd } as Monto }))
 
     const porCategoria: Record<Categoria, Monto[]> = {
       compra_papeles: deGasto.filter((x) => x.g.categoria === 'compra_papeles').map((x) => x.m),
       gasolina: deCarga.map((x) => x.m),
-      taller: deItem.map((x) => x.m),
+      taller: [...deItem.map((x) => x.m), ...deEvento.map((x) => x.m)],
+      seguro: deGasto.filter((x) => x.g.categoria === 'seguro').map((x) => x.m),
       otro: deGasto.filter((x) => x.g.categoria === 'otro').map((x) => x.m),
     }
-    const porSistema = SISTEMAS.map((s) => ({ sistema: s, montos: deItem.filter((x) => x.i.sistema === s).map((x) => x.m) }))
+    const porSistema = SISTEMAS.map((s) => ({
+      sistema: s,
+      montos: [...deItem.filter((x) => x.i.sistema === s).map((x) => x.m), ...(s === 'Cauchos' ? deEvento.map((x) => x.m) : [])],
+    }))
 
     // Uso y mantenimiento por km (sin la compra), siempre en USD
-    const usoUsd = sumar([...porCategoria.gasolina, ...porCategoria.taller, ...porCategoria.otro], 'USD').total
-    const kmRecorridos = cargas.reduce((s, c) => s + c.km_recorridos, 0)
+    const usoUsd = sumar([...porCategoria.gasolina, ...porCategoria.taller, ...porCategoria.seguro, ...porCategoria.otro], 'USD').total
+    const kmRecorridos = cargas.reduce((s, c) => s + (c.km_recorridos ?? 0), 0)
 
     // Últimos movimientos: gasolina agrupada por mes, taller por visita, gastos sueltos
     const movimientos: Movimiento[] = []
@@ -109,11 +119,25 @@ export default function Gastos() {
         accion: () => navegar(`/taller/visita/${v.id}`),
       })
     }
+    const NOMBRE_EVENTO: Record<string, string> = { presion: 'Aire de los cauchos', rotacion: 'Rotación', balanceo: 'Balanceo', alineacion: 'Alineación', montaje: 'Montaje de caucho', retiro: 'Retiro de caucho' }
+    for (const { e, m } of deEvento) {
+      movimientos.push({
+        clave: e.id,
+        Icono: CircleDot,
+        color: 'var(--mantequilla)',
+        titulo: NOMBRE_EVENTO[e.tipo] ?? 'Cauchos',
+        fecha: e.fecha,
+        fechaTexto: fechaTarjeta(e.fecha),
+        moneda: e.moneda === 'VES' ? 'Bs' : 'USD',
+        montos: [m],
+        accion: () => navegar('/taller/cauchos'),
+      })
+    }
     for (const { g, m } of deGasto) {
       movimientos.push({
         clave: g.id,
-        Icono: g.categoria === 'compra_papeles' ? FileText : Receipt,
-        color: g.categoria === 'compra_papeles' ? 'var(--lavanda)' : 'var(--text-muted)',
+        Icono: g.categoria === 'compra_papeles' ? FileText : g.categoria === 'seguro' ? ShieldCheck : Receipt,
+        color: g.categoria === 'compra_papeles' ? 'var(--lavanda)' : g.categoria === 'seguro' ? 'var(--menta)' : 'var(--text-muted)',
         titulo: g.descripcion,
         fecha: g.fecha,
         fechaTexto: fechaTarjeta(g.fecha),
@@ -125,7 +149,7 @@ export default function Gastos() {
     movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha))
 
     return { porCategoria, porSistema, usoUsd, kmRecorridos, movimientos }
-  }, [cargas, mant, gastos, navegar])
+  }, [cargas, mant, gastos, eventos, navegar])
 
   if (!datos) return <main className="pantalla" />
 
@@ -152,7 +176,7 @@ export default function Gastos() {
           <div className="cifra" style={{ marginTop: 6 }}>{dinero(Math.round(total), vista)}</div>
           {datos.kmRecorridos > 0 && datos.usoUsd > 0 && (
             <span className="muted mini">
-              ≈ {numero(datos.usoUsd / datos.kmRecorridos, 2, 3)} USD por km recorrido (uso y mantenimiento, sin la compra)
+              ≈ {numero(datos.usoUsd / datos.kmRecorridos, 2, 3)} USD por km recorrido (uso, mantenimiento y seguro, sin la compra)
             </span>
           )}
         </div>

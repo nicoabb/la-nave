@@ -4,13 +4,14 @@ import { db, type Gasto, type Moneda } from '../db/esquema'
 import { actualizar, borrar, crear, guardarMeta, leerMeta } from '../db/repo'
 import { hoyISO } from '../lib/fechas'
 import { aTexto, leerNumero } from '../lib/formato'
-import { aUsd } from '../lib/gastos'
+import { aUsd, ayudaTasa } from '../lib/gastos'
 import { useAviso } from './Aviso'
 import { Campo, Segmentado } from './Campo'
 import { Hoja } from './Hoja'
 
 const CATEGORIAS = [
-  { valor: 'compra_papeles', texto: 'Compra y papeles' },
+  { valor: 'compra_papeles', texto: 'Compra/papeles' },
+  { valor: 'seguro', texto: 'Seguro' },
   { valor: 'otro', texto: 'Otro' },
 ] as const
 
@@ -52,6 +53,7 @@ export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string;
       monto: m,
       moneda,
       tasa_ves_usd: tasaOk,
+      tasa_origen: !tasaOk ? null : gasto && tasa === aTexto(gasto.tasa_ves_usd) ? gasto.tasa_origen : ('manual' as const),
       monto_usd: aUsd(m, moneda, tasaOk),
     }
     if (gasto) await actualizar(db.expenses, gasto.id, datos)
@@ -76,7 +78,7 @@ export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string;
           <input
             className="input"
             autoComplete="off"
-            placeholder={categoria === 'compra_papeles' ? 'Ej.: Precio de compra, traspaso' : 'Ej.: Seguro, lavado, estacionamiento'}
+            placeholder={categoria === 'compra_papeles' ? 'Ej.: Precio de compra, traspaso' : categoria === 'seguro' ? 'Ej.: Póliza RCV' : 'Ej.: Lavado, estacionamiento'}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
           />
@@ -92,7 +94,7 @@ export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string;
             <Segmentado etiqueta="Moneda" opciones={MONEDAS} valor={moneda} onCambio={setMoneda} />
           </Campo>
         </div>
-        <Campo etiqueta="Tasa (Bs por USD)" ayuda={moneda === 'VES' ? 'Obligatoria si pagaste en Bs' : 'Opcional: sirve para ver el gasto en Bs'}>
+        <Campo etiqueta="Tasa (Bs por USD)" ayuda={ayudaTasa(moneda, gasto?.tasa_origen, Boolean(gasto) && tasa === aTexto(gasto?.tasa_ves_usd))}>
           <input className="input" inputMode="decimal" autoComplete="off" value={tasa} onChange={(e) => setTasa(e.target.value)} />
         </Campo>
         {error && <p className="error" role="alert">{error}</p>}

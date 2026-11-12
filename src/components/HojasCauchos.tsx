@@ -1,18 +1,22 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
-import { db, type Caucho, type EventoCaucho, type Posicion, type TipoEventoCaucho } from '../db/esquema'
-import { actualizar, borrar, crear } from '../db/repo'
+import { db, type Caucho, type EventoCaucho, type Moneda, type Posicion, type TipoEventoCaucho } from '../db/esquema'
+import { actualizar, borrar, crear, guardarMeta, leerMeta } from '../db/repo'
 import { edadAnios, POSICIONES, rotacionValida, textoEdad, textoPosicion } from '../lib/cauchos'
 import { hoyISO } from '../lib/fechas'
-import { leerEntero, numero } from '../lib/formato'
+import { aTexto, leerEntero, leerNumero, numero } from '../lib/formato'
+import { aUsd, ayudaTasa } from '../lib/gastos'
 import { useAviso } from './Aviso'
 import { Campo, Segmentado } from './Campo'
 import { Hoja } from './Hoja'
 
 type Nuevo<T> = Omit<T, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'deleted'>
 
-async function registrarEvento(datos: Omit<Nuevo<EventoCaucho>, 'visit_id'>) {
-  await crear(db.tire_events, { ...datos, visit_id: null })
+type Pago = Pick<EventoCaucho, 'monto' | 'moneda' | 'tasa_ves_usd' | 'tasa_origen' | 'monto_usd'>
+const SIN_PAGO: Pago = { monto: null, moneda: null, tasa_ves_usd: null, tasa_origen: null, monto_usd: null }
+
+async function registrarEvento(datos: Omit<Nuevo<EventoCaucho>, 'visit_id' | keyof Pago>, pago: Pago = SIN_PAGO) {
+  await crear(db.tire_events, { ...datos, ...pago, visit_id: null })
 }
 
 /** Agregar, editar o retirar un caucho. */
@@ -162,6 +166,11 @@ const TITULOS: Partial<Record<TipoEventoCaucho, string>> = {
   presion: 'Presión de aire',
 }
 
+const MONEDAS = [
+  { valor: 'USD', texto: 'USD' },
+  { valor: 'VES', texto: 'Bs' },
+] as const
+
 const EJES = [
   { valor: 'delantera', texto: 'Delantera' },
   { valor: 'trasera', texto: 'Trasera' },
@@ -186,6 +195,14 @@ export function HojaServicio({
   const [fecha, setFecha] = useState(hoyISO())
   const [km, setKm] = useState(kmTotal ? numero(Math.round(kmTotal)) : '')
   const [eje, setEje] = useState<(typeof EJES)[number]['valor']>('ambas')
+  const [conPago, setConPago] = useState(false)
+  const [monto, setMonto] = useState('')
+  const [moneda, setMoneda] = useState<Moneda>('VES')
+  const [tasa, setTasa] = useState('')
+
+  useEffect(() => {
+    leerMeta<number>('ultima_tasa').then((t) => t && setTasa((prev) => prev || aTexto(t)))
+  }, [])
   const original = arregloDe(montados)
   const [arreglo, setArreglo] = useState<Arreglo>(original)
   const [error, setError] = useState('')
@@ -201,6 +218,16 @@ export function HojaServicio({
       if (!window.confirm('No moviste ningún caucho. ¿Registrar la rotación de todas formas?')) return
     }
     const kmN = km.trim() ? leerEntero(km) : null
+    let pago = SIN_PAGO
+    if (conPago && monto.trim()) {
+      const m = leerNumero(monto)
+      const t = tasa.trim() ? leerNumero(tasa) : null
+      if (!m || m <= 0) return setError('El monto no es válido.')
+      if (moneda === 'VES' && (!t || t <= 0)) return setError('Si pagaste en Bs, escribe la tasa.')
+      const tasaOk = t && t > 0 ? t : null
+      if (tasaOk) await guardarMeta('ultima_tasa', tasaOk)
+      pago = { monto: m, moneda, tasa_ves_usd: tasaOk, tasa_origen: tasaOk ? 'manual' : null, monto_usd: aUsd(m, moneda, tasaOk) }
+    }
     await db.transaction('rw', db.tires, db.tire_events, async () => {
       let detalle: Record<string, string> | null = null
       if (tipo === 'alineacion') detalle = { eje }
@@ -213,7 +240,7 @@ export function HojaServicio({
           }
         }
       }
-      await registrarEvento({ vehicle_id: vehiculoId, fecha, km: kmN, tipo, detalle })
+      await registrarEvento({ vehicle_id: vehiculoId, fecha, km: kmN, tipo, detalle }, pago)
     })
     avisar(`${TITULOS[tipo]} registrada`)
     onCerrar()
@@ -238,9 +265,28 @@ export function HojaServicio({
             <input className="input" inputMode="numeric" autoComplete="off" value={km} onChange={(e) => setKm(e.target.value)} />
           </Campo>
         </div>
+        {conPago ? (
+          <>
+            <div className="fila-campos">
+              <Campo etiqueta="Pagado">
+                <input className="input" inputMode="decimal" autoComplete="off" value={monto} onChange={(e) => setMonto(e.target.value)} />
+              </Campo>
+              <Campo etiqueta="Moneda">
+                <Segmentado etiqueta="Moneda" opciones={MONEDAS} valor={moneda} onCambio={setMoneda} />
+              </Campo>
+            </div>
+            <Campo etiqueta="Tasa (Bs por USD)" ayuda={ayudaTasa(moneda, null, false)}>
+              <input className="input" inputMode="decimal" autoComplete="off" value={tasa} onChange={(e) => setTasa(e.target.value)} />
+            </Campo>
+          </>
+        ) : (
+          <button type="button" className="enlace" style={{ alignSelf: 'flex-start', minHeight: 32 }} onClick={() => setConPago(true)}>
+            + Agregar lo pagado (opcional)
+          </button>
+        )}
         {error && <p className="error" role="alert">{error}</p>}
         <button type="submit" className="btn btn--primario btn--bloque">Guardar</button>
-        <span className="muted mini">Si lo hiciste en el taller y quieres guardar el costo, regístralo también como visita.</span>
+        <span className="muted mini">Lo pagado suma a Gastos en el sistema Cauchos. Si fue un trabajo con varios ítems, regístralo como visita.</span>
       </form>
     </Hoja>
   )

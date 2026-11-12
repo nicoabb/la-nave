@@ -10,7 +10,7 @@ interface Correccion {
 interface Carga {
   fecha: string
   created_at: string
-  km_recorridos: number
+  km_recorridos: number | null
 }
 
 /** Última corrección + Σ km de las cargas posteriores a ella. */
@@ -20,5 +20,5 @@ export function kmActual(correcciones: readonly Correccion[], cargas: readonly C
   const posteriores = cargas.filter(
     (c) => c.fecha > base.fecha || (c.fecha === base.fecha && c.created_at > base.created_at),
   )
-  return base.km_total + posteriores.reduce((s, c) => s + c.km_recorridos, 0)
+  return base.km_total + posteriores.reduce((s, c) => s + (c.km_recorridos ?? 0), 0)
 }

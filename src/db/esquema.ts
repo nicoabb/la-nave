@@ -32,15 +32,21 @@ export interface CorreccionOdometro extends Base {
 
 export type Moneda = 'USD' | 'VES'
 
+/** De dónde salió la tasa: escrita a mano, tomada de Wallet o estimada (fila en Bs más cercana). */
+export type TasaOrigen = 'manual' | 'wallet' | 'estimada'
+
 export interface CargaGasolina extends Base {
   vehicle_id: string
   fecha: string
-  km_recorridos: number
+  /** null = carga importada sin km: cuenta como gasto, no para rendimiento */
+  km_recorridos: number | null
   litros: number
-  full: boolean
+  /** true = full · false = no fue full · null = desconocido */
+  full: boolean | null
   monto: number | null
   moneda: Moneda | null
   tasa_ves_usd: number | null
+  tasa_origen: TasaOrigen | null
   monto_usd: number | null
   nota: string
   origen: 'manual' | 'importado'
@@ -67,9 +73,12 @@ export interface VisitaTaller extends Base {
   km: number | null
   titulo: string
   taller: string
+  /** Tienda donde se compraron repuestos (p. ej. una tienda en línea) */
+  proveedor: string
   afecta_rendimiento: boolean
   moneda: Moneda
   tasa_ves_usd: number | null
+  tasa_origen: TasaOrigen | null
   nota: string
 }
 
@@ -135,6 +144,12 @@ export interface EventoCaucho extends Base {
   /** rotación: { tire_id: nueva_posicion } · alineación: { eje } · montaje/retiro: { tire_id } */
   detalle: Record<string, string> | null
   visit_id: string | null
+  /** Lo pagado (p. ej. por el aire): suma a Gastos en el sistema Cauchos */
+  monto: number | null
+  moneda: Moneda | null
+  tasa_ves_usd: number | null
+  tasa_origen: TasaOrigen | null
+  monto_usd: number | null
 }
 
 export type Prioridad = 'rojo' | 'amarillo' | 'verde'
@@ -150,15 +165,16 @@ export interface Deseo extends Base {
   visit_id: string | null
 }
 
-/** Lo que no es gasolina ni taller: precio de compra, traspaso, otros. */
+/** Lo que no es gasolina ni taller: precio de compra, traspaso, seguro, otros. */
 export interface Gasto extends Base {
   vehicle_id: string
   fecha: string
-  categoria: 'compra_papeles' | 'otro'
+  categoria: 'compra_papeles' | 'seguro' | 'otro'
   descripcion: string
   monto: number
   moneda: Moneda
   tasa_ves_usd: number | null
+  tasa_origen: TasaOrigen | null
   monto_usd: number | null
 }
 
@@ -217,6 +233,25 @@ db.version(3).stores({
 db.version(4).stores({
   expenses: 'id, vehicle_id, updated_at',
 })
+
+// v5: tasa_origen, proveedor y montos en eventos de cauchos. Sin índices nuevos:
+// solo se completan los registros existentes (no cambia updated_at).
+db.version(5)
+  .stores({})
+  .upgrade(async (tx) => {
+    const conTasa = (r: { tasa_ves_usd?: number | null; tasa_origen?: string | null }) => {
+      if (r.tasa_origen === undefined) r.tasa_origen = r.tasa_ves_usd ? 'manual' : null
+    }
+    await tx.table('fuel_logs').toCollection().modify(conTasa)
+    await tx.table('expenses').toCollection().modify(conTasa)
+    await tx.table('service_visits').toCollection().modify((v) => {
+      conTasa(v)
+      if (v.proveedor === undefined) v.proveedor = ''
+    })
+    await tx.table('tire_events').toCollection().modify((e) => {
+      for (const k of ['monto', 'moneda', 'tasa_ves_usd', 'tasa_origen', 'monto_usd']) if (e[k] === undefined) e[k] = null
+    })
+  })
 
 export const TABLAS_DATOS = [
   'vehicles',

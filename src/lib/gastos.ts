@@ -40,11 +40,21 @@ export function sumar(xs: readonly Monto[], vista: Vista): { total: number; sinV
   return { total, sinValor }
 }
 
-export type Categoria = 'compra_papeles' | 'gasolina' | 'taller' | 'otro'
+export type Categoria = 'compra_papeles' | 'gasolina' | 'taller' | 'seguro' | 'otro'
 
 export const CATEGORIAS: { clave: Categoria; texto: string; color: string }[] = [
   { clave: 'compra_papeles', texto: 'Compra y papeles', color: 'var(--lavanda)' },
   { clave: 'gasolina', texto: 'Gasolina', color: 'var(--cielo)' },
   { clave: 'taller', texto: 'Taller', color: 'var(--mantequilla)' },
+  { clave: 'seguro', texto: 'Seguro', color: 'var(--menta)' },
   { clave: 'otro', texto: 'Otros gastos', color: 'var(--text-muted)' },
 ]
+
+export type TasaOrigen = 'manual' | 'wallet' | 'estimada'
+
+/** Texto de ayuda bajo el campo de tasa, según su origen (si no se ha tocado). */
+export function ayudaTasa(moneda: Moneda, origen: TasaOrigen | null | undefined, sinTocar: boolean): string {
+  if (sinTocar && origen === 'wallet') return 'Tasa tomada de Wallet. Puedes corregirla.'
+  if (sinTocar && origen === 'estimada') return 'Tasa estimada con la fecha más cercana. Revísala.'
+  return moneda === 'VES' ? 'Obligatoria si pagaste en Bs' : 'Opcional: sirve para ver el gasto en Bs'
+}

@@ -10,6 +10,7 @@ import { actualizar, borrar, crear, guardarMeta, leerMeta, uuid } from '../db/re
 import { SISTEMAS, TIPOS_ITEM } from '../lib/catalogos'
 import { hoyISO } from '../lib/fechas'
 import { aTexto, dinero, leerEntero, leerNumero, numero } from '../lib/formato'
+import { ayudaTasa } from '../lib/gastos'
 
 interface ItemForm {
   clave: string
@@ -110,6 +111,7 @@ function FormVisita({
   const [km, setKm] = useState(visita ? (visita.km != null ? numero(visita.km) : '') : kmTotal ? numero(Math.round(kmTotal)) : '')
   const [titulo, setTitulo] = useState(visita?.titulo ?? '')
   const [taller, setTaller] = useState(visita?.taller ?? '')
+  const [proveedor, setProveedor] = useState(visita?.proveedor ?? '')
   const [afecta, setAfecta] = useState(visita?.afecta_rendimiento ?? false)
   const [moneda, setMoneda] = useState<Moneda>(visita?.moneda ?? 'USD')
   const [tasa, setTasa] = useState(aTexto(visita?.tasa_ves_usd))
@@ -173,9 +175,11 @@ function FormVisita({
       km: km.trim() ? leerEntero(km) : null,
       titulo: titulo.trim(),
       taller: taller.trim(),
+      proveedor: proveedor.trim(),
       afecta_rendimiento: afecta,
       moneda,
       tasa_ves_usd: tasaOk,
+      tasa_origen: !tasaOk ? null : visita && tasa === aTexto(visita.tasa_ves_usd) ? visita.tasa_origen : ('manual' as const),
       nota: nota.trim(),
     }
 
@@ -242,14 +246,19 @@ function FormVisita({
           <Campo etiqueta="Título (opcional)" ayuda="Si lo dejas vacío, se arma con los ítems.">
             <input className="input" autoComplete="off" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
           </Campo>
-          <Campo etiqueta="Taller (opcional)">
-            <input className="input" autoComplete="off" value={taller} onChange={(e) => setTaller(e.target.value)} />
-          </Campo>
+          <div className="fila-campos">
+            <Campo etiqueta="Taller (opcional)">
+              <input className="input" autoComplete="off" value={taller} onChange={(e) => setTaller(e.target.value)} />
+            </Campo>
+            <Campo etiqueta="Tienda (opcional)" ayuda="Si compraste repuestos">
+              <input className="input" autoComplete="off" value={proveedor} onChange={(e) => setProveedor(e.target.value)} />
+            </Campo>
+          </div>
           <div className="fila-campos">
             <Campo etiqueta="Moneda de pago">
               <Segmentado etiqueta="Moneda de pago" opciones={MONEDAS} valor={moneda} onCambio={setMoneda} />
             </Campo>
-            <Campo etiqueta="Tasa (Bs por USD)" ayuda={moneda === 'VES' ? 'Obligatoria' : 'Opcional'}>
+            <Campo etiqueta="Tasa (Bs por USD)" ayuda={ayudaTasa(moneda, visita?.tasa_origen, Boolean(visita) && tasa === aTexto(visita?.tasa_ves_usd))}>
               <input className="input" inputMode="decimal" autoComplete="off" value={tasa} onChange={(e) => setTasa(e.target.value)} />
             </Campo>
           </div>

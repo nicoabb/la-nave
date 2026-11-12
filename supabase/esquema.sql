@@ -31,10 +31,12 @@ create table if not exists public.vehicles (
 create table if not exists public.odometer_corrections (
   vehicle_id uuid, fecha date, km_total double precision, nota text
 );
+-- km_recorridos puede quedar vacío (carga importada sin km).
+-- "full": true = full, false = no fue full, null = desconocido.
 create table if not exists public.fuel_logs (
   vehicle_id uuid, fecha date, km_recorridos double precision, litros double precision,
-  "full" boolean not null default true, monto double precision, moneda text,
-  tasa_ves_usd double precision, monto_usd double precision, nota text, origen text
+  "full" boolean default true, monto double precision, moneda text,
+  tasa_ves_usd double precision, tasa_origen text, monto_usd double precision, nota text, origen text
 );
 create table if not exists public.maintenance_tasks (
   vehicle_id uuid, clave text, nombre text, sistema text, intervalo_km double precision,
@@ -42,8 +44,9 @@ create table if not exists public.maintenance_tasks (
   activa boolean not null default true, notas text, es_revision boolean not null default false, fuente text
 );
 create table if not exists public.service_visits (
-  vehicle_id uuid, fecha date, km double precision, titulo text, taller text,
-  afecta_rendimiento boolean not null default false, moneda text, tasa_ves_usd double precision, nota text
+  vehicle_id uuid, fecha date, km double precision, titulo text, taller text, proveedor text,
+  afecta_rendimiento boolean not null default false, moneda text, tasa_ves_usd double precision,
+  tasa_origen text, nota text
 );
 create table if not exists public.service_items (
   visit_id uuid, descripcion text, tipo text, sistema text, task_id uuid, product_id uuid,
@@ -61,17 +64,32 @@ create table if not exists public.tires (
   vehicle_id uuid, marca text, medida text, dot_semana integer, dot_anio integer,
   fecha_montaje date, km_montaje double precision, posicion text, estado text, nota text
 );
+-- Un evento puede llevar lo pagado (p. ej. el aire): suma a Gastos → Cauchos.
 create table if not exists public.tire_events (
-  vehicle_id uuid, fecha date, km double precision, tipo text, detalle jsonb, visit_id uuid
+  vehicle_id uuid, fecha date, km double precision, tipo text, detalle jsonb, visit_id uuid,
+  monto double precision, moneda text, tasa_ves_usd double precision, tasa_origen text, monto_usd double precision
 );
 create table if not exists public.wishlist_items (
   vehicle_id uuid, titulo text, prioridad text, costo_estimado_usd double precision, nota text,
   hecho boolean not null default false, fecha_hecho date, visit_id uuid
 );
+-- categoria: 'compra_papeles' | 'seguro' | 'otro'
 create table if not exists public.expenses (
   vehicle_id uuid, fecha date, categoria text, descripcion text, monto double precision,
-  moneda text, tasa_ves_usd double precision, monto_usd double precision
+  moneda text, tasa_ves_usd double precision, tasa_origen text, monto_usd double precision
 );
+
+-- Por si las tablas ya existían de una versión anterior de este script
+alter table public.fuel_logs alter column "full" drop not null;
+alter table public.fuel_logs add column if not exists tasa_origen text;
+alter table public.service_visits add column if not exists proveedor text;
+alter table public.service_visits add column if not exists tasa_origen text;
+alter table public.tire_events add column if not exists monto double precision;
+alter table public.tire_events add column if not exists moneda text;
+alter table public.tire_events add column if not exists tasa_ves_usd double precision;
+alter table public.tire_events add column if not exists tasa_origen text;
+alter table public.tire_events add column if not exists monto_usd double precision;
+alter table public.expenses add column if not exists tasa_origen text;
 
 -- Columnas comunes, seguridad (RLS) y disparador en cada tabla
 do $$
