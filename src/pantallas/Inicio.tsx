@@ -20,17 +20,20 @@ import {
   useGasolina,
   useKilometraje,
   useMantenimiento,
+  usePendientes,
   useUmbralPronto,
   useVehiculoActivo,
 } from '../db/hooks'
 import { dinero, km, kmPorLitro, numero } from '../lib/formato'
 import { duracion, estadoDe, type EstadoTarea } from '../lib/tareas'
+import { rutaParaHacer } from '../lib/rutas'
 
 export default function Inicio() {
   const vehiculo = useVehiculoActivo()
   const kmTotal = useKilometraje(vehiculo.id)
   const { analisis, kmDia } = useGasolina(vehiculo.id)
   const mant = useMantenimiento(vehiculo.id)
+  const pendientes = usePendientes(vehiculo.id)
   const umbral = useUmbralPronto()
   const navegar = useNavigate()
   const aceite = mant?.estados.find((e) => e.tarea.clave === 'aceite_motor')
@@ -82,16 +85,16 @@ export default function Inicio() {
           <h2 className="titulo-seccion">Lo que viene</h2>
           <Link to="/pendientes" className="enlace mini">Ver todo</Link>
         </div>
-        {mant && mant.estados.length === 0 && <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>}
+        {pendientes && pendientes.items.length === 0 && <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>}
         <div className="lista" style={{ marginTop: 4 }}>
-          {mant?.estados.slice(0, 3).map((e) => (
-            <button key={e.tarea.id} className="lista__fila" onClick={() => navegar(rutaParaHacer(e.tarea))}>
-              <PuntoEstado estado={e.estado} />
+          {pendientes?.items.slice(0, 3).map((i) => (
+            <button key={i.clave} className="lista__fila" onClick={() => navegar(i.tarea ? rutaParaHacer(i.tarea) : '/pendientes')}>
+              <PuntoEstado estado={i.estado} />
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontWeight: 600 }}>{e.tarea.nombre}</span>
-                <span className="muted mini">{e.texto}</span>
+                <span style={{ display: 'block', fontWeight: 600 }}>{i.titulo}</span>
+                <span className="muted mini">{i.detalle || 'Pendiente puntual'}</span>
               </span>
-              <ChipEstado estado={e.estado} />
+              <ChipEstado estado={i.estado} />
             </button>
           ))}
         </div>
@@ -105,11 +108,6 @@ export default function Inicio() {
       {hoja === 'corregir' && <HojaCorreccion vehiculoId={vehiculo.id} kmEstimado={kmTotal} onCerrar={cerrar} />}
     </main>
   )
-}
-
-/** Adónde ir para marcar una tarea como hecha. */
-export function rutaParaHacer(t: TareaMantenimiento): string {
-  return t.es_revision ? `/revision/${t.id}` : `/taller/visita/nueva?tarea=${t.id}`
 }
 
 function TarjetaAceite({
@@ -220,7 +218,7 @@ function HojaRegistrar({ onCerrar, onCorregir }: { onCerrar: () => void; onCorre
       </button>
       <Opcion Icono={Wrench} texto="Visita al taller" detalle="Repuestos, servicios y mano de obra" onClick={() => ir('/taller/visita/nueva')} />
       <Opcion Icono={ClipboardCheck} texto="Revisión semanal del capó" detalle="Aceite, refrigerante, frenos, dirección y cauchos" onClick={() => ir('/revision/revision_semanal')} />
-      <Opcion Icono={ListPlus} texto="Nuevo pendiente" />
+      <Opcion Icono={ListPlus} texto="Nuevo pendiente" detalle="Algo puntual, como cambiar las plumillas" onClick={() => ir('/pendientes', { nuevo: true })} />
       <Opcion Icono={Gauge} texto="Corregir kilometraje" detalle="Si el tablero marca otra cosa" onClick={onCorregir} />
 
       <button className="btn btn--bloque" style={{ marginTop: 6 }} onClick={onCerrar}>Cancelar</button>

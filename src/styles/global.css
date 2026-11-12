@@ -631,3 +631,73 @@ select.input {
 textarea.input {
   resize: vertical;
 }
+/* ---------- Cauchos ---------- */
+.carro {
+  display: grid;
+  grid-template-columns: 1fr 96px 1fr;
+  grid-template-rows: 1fr 1fr;
+  column-gap: 10px;
+}
+
+.carro__svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 96px;
+  height: auto;
+}
+
+.carro__etiqueta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: var(--tactil);
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  font-size: var(--fs-secundario);
+}
+
+.carro__etiqueta:nth-of-type(1) {
+  grid-column: 1;
+  grid-row: 1;
+  justify-content: flex-start;
+  padding-top: 24px;
+}
+.carro__etiqueta:nth-of-type(2) {
+  grid-column: 3;
+  grid-row: 1;
+  padding-top: 24px;
+}
+.carro__etiqueta:nth-of-type(3) {
+  grid-column: 1;
+  grid-row: 2;
+  justify-content: flex-end;
+  padding-bottom: 24px;
+}
+.carro__etiqueta:nth-of-type(4) {
+  grid-column: 3;
+  grid-row: 2;
+  justify-content: flex-end;
+  padding-bottom: 24px;
+}
+
+.fila-tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  text-align: left;
+}
+
+/* ---------- Pendientes ---------- */
+.grupo__titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tactil);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}

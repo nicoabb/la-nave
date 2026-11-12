@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react'
 import { useAviso } from '../components/Aviso'
 import { Campo, Segmentado } from '../components/Campo'
-import { db, type ItemTaller, type Moneda, type Producto, type TareaMantenimiento, type TipoItem, type VisitaTaller } from '../db/esquema'
+import { db, type Deseo, type ItemTaller, type Moneda, type Producto, type TareaMantenimiento, type TipoItem, type VisitaTaller } from '../db/esquema'
 import { useKilometraje, useVehiculoActivo } from '../db/hooks'
 import { actualizar, borrar, crear, guardarMeta, leerMeta, uuid } from '../db/repo'
 import { SISTEMAS, TIPOS_ITEM } from '../lib/catalogos'
@@ -50,13 +50,15 @@ export default function Visita() {
       .filter((t) => !t.deleted)
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
     const productos = (await db.products.toArray()).filter((p) => !p.deleted)
-    if (!id) return { tareas, productos, visita: null, items: [] as ItemTaller[] }
+    const idPendiente = params.get('pendiente')
+    const pendiente = idPendiente ? ((await db.wishlist_items.get(idPendiente)) ?? null) : null
+    if (!id) return { tareas, productos, visita: null, items: [] as ItemTaller[], pendiente }
     const visita = (await db.service_visits.get(id)) ?? null
     const items = (await db.service_items.where('visit_id').equals(id).toArray())
       .filter((i) => !i.deleted)
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    return { tareas, productos, visita, items }
-  }, [id, vehiculo.id])
+    return { tareas, productos, visita, items, pendiente: null }
+  }, [id, vehiculo.id, params.get('pendiente')])
 
   if (!datos || kmTotal === undefined) return <main className="pantalla" />
   if (id && !datos.visita) {
@@ -77,6 +79,7 @@ export default function Visita() {
       productos={datos.productos}
       kmTotal={kmTotal}
       tareaInicial={params.get('tarea')}
+      pendiente={datos.pendiente}
     />
   )
 }
@@ -89,7 +92,9 @@ function FormVisita({
   productos,
   kmTotal,
   tareaInicial,
+  pendiente,
 }: {
+  pendiente: Deseo | null
   vehiculoId: string
   visita: VisitaTaller | null
   itemsGuardados: ItemTaller[]
@@ -125,6 +130,7 @@ function FormVisita({
         }),
       )
     }
+    if (pendiente) return [itemVacio({ descripcion: pendiente.titulo, tipo: 'servicio' })]
     const t = tareas.find((x) => x.id === tareaInicial)
     return [t ? itemVacio({ descripcion: t.nombre, sistema: t.sistema, task_id: t.id, tipo: 'servicio' }) : itemVacio()]
   })
@@ -173,10 +179,11 @@ function FormVisita({
       nota: nota.trim(),
     }
 
-    await db.transaction('rw', db.service_visits, db.service_items, async () => {
+    await db.transaction('rw', db.service_visits, db.service_items, db.wishlist_items, async () => {
       let visitId = visita?.id
       if (visitId) await actualizar(db.service_visits, visitId, datosVisita)
       else visitId = (await crear(db.service_visits, { vehicle_id: vehiculoId, ...datosVisita })).id
+      if (pendiente) await actualizar(db.wishlist_items, pendiente.id, { visit_id: visitId })
 
       const quedan = new Set(llenos.map((i) => i.id).filter(Boolean))
       for (const viejo of itemsGuardados) if (!quedan.has(viejo.id)) await borrar(db.service_items, viejo.id)

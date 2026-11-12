@@ -110,6 +110,46 @@ export interface Revision extends Base {
   nota: string
 }
 
+export type Posicion = 'DI' | 'DD' | 'TI' | 'TD' | 'REP'
+
+export interface Caucho extends Base {
+  vehicle_id: string
+  marca: string
+  medida: string
+  dot_semana: number | null
+  dot_anio: number | null
+  fecha_montaje: string | null
+  km_montaje: number | null
+  posicion: Posicion
+  estado: 'montado' | 'retirado'
+  nota: string
+}
+
+export type TipoEventoCaucho = 'montaje' | 'rotacion' | 'balanceo' | 'alineacion' | 'presion' | 'retiro'
+
+export interface EventoCaucho extends Base {
+  vehicle_id: string
+  fecha: string
+  km: number | null
+  tipo: TipoEventoCaucho
+  /** rotación: { tire_id: nueva_posicion } · alineación: { eje } · montaje/retiro: { tire_id } */
+  detalle: Record<string, string> | null
+  visit_id: string | null
+}
+
+export type Prioridad = 'rojo' | 'amarillo' | 'verde'
+
+export interface Deseo extends Base {
+  vehicle_id: string
+  titulo: string
+  prioridad: Prioridad
+  costo_estimado_usd: number | null
+  nota: string
+  hecho: boolean
+  fecha_hecho: string | null
+  visit_id: string | null
+}
+
 /** Valores sueltos del dispositivo (última tasa usada, etc.). No se sincroniza. */
 export interface Meta {
   clave: string
@@ -132,6 +172,9 @@ export const db = new Dexie('la-nave') as Dexie & {
   service_items: Table<ItemTaller, string>
   products: Table<Producto, string>
   inspections: Table<Revision, string>
+  tires: Table<Caucho, string>
+  tire_events: Table<EventoCaucho, string>
+  wishlist_items: Table<Deseo, string>
   meta: Table<Meta, string>
   fotos: Table<Foto, string>
 }
@@ -152,6 +195,12 @@ db.version(2).stores({
   fotos: 'path',
 })
 
+db.version(3).stores({
+  tires: 'id, vehicle_id, updated_at',
+  tire_events: 'id, vehicle_id, updated_at',
+  wishlist_items: 'id, vehicle_id, updated_at',
+})
+
 export const TABLAS_DATOS = [
   'vehicles',
   'odometer_corrections',
@@ -161,4 +210,7 @@ export const TABLAS_DATOS = [
   'service_items',
   'products',
   'inspections',
+  'tires',
+  'tire_events',
+  'wishlist_items',
 ] as const

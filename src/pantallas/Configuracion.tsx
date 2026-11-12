@@ -5,15 +5,16 @@ import { Campo } from '../components/Campo'
 import { FormVehiculo } from '../components/FormVehiculo'
 import { HojaCorreccion } from '../components/HojaCorreccion'
 import { BotonExportar, BotonRestaurar } from '../components/Respaldo'
-import { useCorrecciones, useKilometraje, useUmbralPronto, useVehiculoActivo } from '../db/hooks'
+import { useCorrecciones, useKilometraje, useUmbralPronto, useVehiculoActivo, useVidaUtilCauchos } from '../db/hooks'
 import { guardarMeta } from '../db/repo'
-import { fechaLista, km, leerEntero } from '../lib/formato'
+import { fechaLista, km, leerEntero, numero } from '../lib/formato'
 
 export default function Configuracion() {
   const vehiculo = useVehiculoActivo()
   const correcciones = useCorrecciones(vehiculo.id) ?? []
   const kmTotal = useKilometraje(vehiculo.id)
   const umbral = useUmbralPronto()
+  const vidaUtil = useVidaUtilCauchos()
   const [corrigiendo, setCorrigiendo] = useState(false)
 
   return (
@@ -71,6 +72,19 @@ export default function Configuracion() {
               const n = leerEntero(e.target.value)
               if (n && n >= 50 && n < 100) guardarMeta('umbral_pronto', n / 100)
               else e.target.value = String(Math.round(umbral * 100))
+            }}
+          />
+        </Campo>
+        <Campo etiqueta="Vida útil de los cauchos (km)" ayuda="Al llegar a estos km desde el montaje, el caucho pasa a «Urgente».">
+          <input
+            className="input"
+            inputMode="numeric"
+            defaultValue={numero(vidaUtil)}
+            key={vidaUtil}
+            onBlur={(e) => {
+              const n = leerEntero(e.target.value)
+              if (n && n >= 5000) guardarMeta('vida_util_cauchos', n)
+              else e.target.value = numero(vidaUtil)
             }}
           />
         </Campo>

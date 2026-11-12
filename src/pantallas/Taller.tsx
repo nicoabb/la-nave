@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, ChevronRight, CircleDot, Gauge, Package, Pencil, Plus, Wrench } from 'lucide-react'
-import { Encabezado, Vacio } from '../components/comunes'
+import { Encabezado, PuntoEstado, Vacio } from '../components/comunes'
 import { HojaProducto } from '../components/FormProducto'
 import { db, type ItemTaller, type Producto, type VisitaTaller } from '../db/esquema'
-import { useFotoUrl, useMantenimiento, useVehiculoActivo } from '../db/hooks'
+import { useCauchos, useFotoUrl, useMantenimiento, useVehiculoActivo } from '../db/hooks'
 import { TIPOS_ITEM } from '../lib/catalogos'
 import { dinero, fechaTarjeta, km, numero } from '../lib/formato'
 
@@ -37,6 +37,7 @@ export default function Taller() {
 function Visitas() {
   const vehiculo = useVehiculoActivo()
   const datos = useMantenimiento(vehiculo.id)
+  const cauchos = useCauchos(vehiculo.id)
   const [abierta, setAbierta] = useState<string | null>(null)
 
   const itemsPorVisita = new Map<string, ItemTaller[]>()
@@ -50,8 +51,9 @@ function Visitas() {
         </span>
         <span style={{ flex: 1 }}>
           <strong style={{ fontWeight: 600 }}>Cauchos</strong>
-          <span className="muted mini" style={{ display: 'block' }}>Disponible en la próxima fase</span>
+          <span className="muted mini" style={{ display: 'block' }}>{cauchos?.resumen.texto ?? ' '}</span>
         </span>
+        {cauchos && <PuntoEstado estado={cauchos.resumen.estado} />}
         <ChevronRight size={20} strokeWidth={1.8} color="var(--text-muted)" aria-hidden />
       </Link>
 
