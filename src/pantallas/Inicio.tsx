@@ -11,7 +11,8 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { BarraProgreso, ChipEstado, EstadoRed, PuntoEstado } from '../components/comunes'
+import { BarraProgreso, ChipEstado, PuntoEstado } from '../components/comunes'
+import { IndicadorSync } from '../components/Sincronizador'
 import { Hoja } from '../components/Hoja'
 import { HojaCorreccion } from '../components/HojaCorreccion'
 import type { TareaMantenimiento } from '../db/esquema'
@@ -46,7 +47,7 @@ export default function Inicio() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <p className="subtitulo" style={{ margin: 0 }}>{descripcionVehiculo(vehiculo)}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <EstadoRed />
+            <IndicadorSync />
             <Link to="/configuracion" className="icono-btn" aria-label="Configuración">
               <Settings size={20} strokeWidth={1.8} />
             </Link>

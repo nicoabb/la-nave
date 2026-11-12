@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProveedorAvisos } from './components/Aviso'
 import { BarraInferior } from './components/BarraInferior'
+import { Sincronizador } from './components/Sincronizador'
 import { useVehiculo, VehiculoContexto } from './db/hooks'
 import Bienvenida from './pantallas/Bienvenida'
 import Inicio from './pantallas/Inicio'
@@ -23,12 +24,15 @@ export default function App() {
     if (vehiculo) asegurarTareas(vehiculo).catch(console.error)
   }, [vehiculo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (vehiculo === undefined) return <div className="app" />
+  if (vehiculo === undefined) return <div className="app"><Sincronizador /></div>
   if (vehiculo === null) {
     return (
-      <div className="app">
-        <Bienvenida />
-      </div>
+      <ProveedorAvisos>
+        <div className="app">
+          <Sincronizador />
+          <Bienvenida />
+        </div>
+      </ProveedorAvisos>
     )
   }
 
@@ -36,6 +40,7 @@ export default function App() {
     <VehiculoContexto.Provider value={vehiculo}>
       <ProveedorAvisos>
       <div className="app">
+        <Sincronizador />
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/gasolina" element={<Gasolina />} />

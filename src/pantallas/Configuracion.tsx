@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
 import { Campo } from '../components/Campo'
+import { SeccionCuenta } from '../components/Cuenta'
 import { FormVehiculo } from '../components/FormVehiculo'
 import { HojaCorreccion } from '../components/HojaCorreccion'
 import { BotonExportar, BotonRestaurar } from '../components/Respaldo'
@@ -25,6 +26,11 @@ export default function Configuracion() {
         </Link>
         <h1 className="titulo">Configuración</h1>
       </header>
+
+      <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h2 className="titulo-seccion">Cuenta y sincronización</h2>
+        <SeccionCuenta />
+      </section>
 
       <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 className="titulo-seccion">Vehículo</h2>
@@ -93,8 +99,7 @@ export default function Configuracion() {
       <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2 className="titulo-seccion">Respaldo</h2>
         <span className="muted mini">
-          Por ahora tus datos se guardan solo en este dispositivo. Descarga un respaldo de vez en cuando
-          (y guárdalo en Drive, por ejemplo) hasta que activemos la sincronización.
+          Una copia en un archivo, por si acaso. Con la cuenta activa tus datos ya quedan en la nube; las fotos no van en este archivo.
         </span>
         <BotonExportar />
         <BotonRestaurar />
