@@ -13,12 +13,44 @@ interface Carga {
   km_recorridos: number | null
 }
 
-/** Última corrección + Σ km de las cargas posteriores a ella. */
+/**
+ * Momento aproximado de un registro: su fecha con la hora en que se anotó, si
+ * se anotó ese mismo día; si no, el mediodía de esa fecha.
+ */
+export function momento(r: { fecha: string; created_at: string }): number {
+  const c = new Date(r.created_at)
+  const dia = `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, '0')}-${String(c.getDate()).padStart(2, '0')}`
+  return dia === r.fecha ? c.getTime() : new Date(`${r.fecha}T12:00:00`).getTime()
+}
+
+/**
+ * Última corrección + km de las cargas posteriores.
+ *
+ * Los km de una carga son los recorridos desde la carga anterior, así que la
+ * primera carga después de una lectura del tablero ya está en parte dentro de
+ * esa lectura: de ella solo se cuenta la fracción del tiempo posterior a la
+ * lectura. Las siguientes cuentan completas.
+ */
 export function kmActual(correcciones: readonly Correccion[], cargas: readonly Carga[]): number | null {
   const base = ordenar(correcciones).at(-1)
   if (!base) return null
-  const posteriores = cargas.filter(
-    (c) => c.fecha > base.fecha || (c.fecha === base.fecha && c.created_at > base.created_at),
-  )
-  return base.km_total + posteriores.reduce((s, c) => s + (c.km_recorridos ?? 0), 0)
+  const mBase = momento(base)
+  const todas = ordenar(cargas).map((c) => ({ c, m: momento(c) }))
+  let total = base.km_total
+  let primera = true
+  for (let i = 0; i < todas.length; i++) {
+    const { c, m } = todas[i]
+    if (m <= mBase) continue
+    const km = c.km_recorridos ?? 0
+    if (primera) {
+      primera = false
+      const anterior = todas.slice(0, i).filter((x) => x.m < m).at(-1)
+      if (anterior && m > anterior.m) {
+        total += km * Math.min(1, Math.max(0, (m - mBase) / (m - anterior.m)))
+        continue
+      }
+    }
+    total += km
+  }
+  return total
 }
