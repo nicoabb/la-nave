@@ -65,6 +65,8 @@ export interface TareaMantenimiento extends Base {
   notas: string
   es_revision: boolean
   fuente: string // 'Manual' | 'Usuario' | 'Sugerido' | ''
+  /** Estimado manual en USD, cuando aún no hay historial de costos */
+  costo_estimado_usd: number | null
 }
 
 export interface VisitaTaller extends Base {
@@ -189,6 +191,8 @@ export interface Gasto extends Base {
   fecha: string
   categoria: 'compra_papeles' | 'seguro' | 'otro'
   descripcion: string
+  /** Tarea periódica que completa este pago (p. ej. la renovación del seguro) */
+  task_id: string | null
   monto: number
   moneda: Moneda
   tasa_ves_usd: number | null
@@ -277,6 +281,18 @@ db.version(6).stores({
   visit_receipts: 'id, visit_id, updated_at',
   comprobantes_cola: 'path',
 })
+
+// v7: estimado manual en tareas y gastos vinculados a una tarea
+db.version(7)
+  .stores({})
+  .upgrade(async (tx) => {
+    await tx.table('maintenance_tasks').toCollection().modify((t) => {
+      if (t.costo_estimado_usd === undefined) t.costo_estimado_usd = null
+    })
+    await tx.table('expenses').toCollection().modify((g) => {
+      if (g.task_id === undefined) g.task_id = null
+    })
+  })
 
 export const TABLAS_DATOS = [
   'vehicles',

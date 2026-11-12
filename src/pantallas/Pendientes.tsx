@@ -3,11 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ListChecks, Plus } from 'lucide-react'
 import { Encabezado, PuntoEstado, Vacio } from '../components/comunes'
 import { HojaPendiente } from '../components/HojaPendiente'
-import type { Deseo } from '../db/esquema'
+import type { Deseo, TareaMantenimiento } from '../db/esquema'
 import { usePendientes, useVehiculoActivo, type ItemPendiente } from '../db/hooks'
 import { dinero, fechaLista } from '../lib/formato'
-import { rutaParaHacer } from '../lib/rutas'
-import type { Estado } from '../lib/tareas'
+import type { Estado, EstadoTarea } from '../lib/tareas'
+import { HojaAccionesTarea } from '../components/HojaAccionesTarea'
 
 const GRUPOS: { estado: Estado; titulo: string }[] = [
   { estado: 'urgente', titulo: 'Urgente' },
@@ -21,6 +21,7 @@ export default function Pendientes() {
   const navegar = useNavigate()
   const nuevoDesdeInicio = (useLocation().state as { nuevo?: boolean } | null)?.nuevo
   const [hoja, setHoja] = useState<Deseo | 'nuevo' | null>(nuevoDesdeInicio ? 'nuevo' : null)
+  const [acciones, setAcciones] = useState<EstadoTarea<TareaMantenimiento> | null>(null)
   const [abiertos, setAbiertos] = useState<Record<string, boolean>>({ urgente: true, pronto: true, 'en-orden': false, hechos: false })
 
   const items = datos?.items ?? []
@@ -30,7 +31,7 @@ export default function Pendientes() {
 
   function abrir(i: ItemPendiente) {
     if (i.deseo) setHoja(i.deseo)
-    else if (i.tarea) navegar(rutaParaHacer(i.tarea))
+    else if (i.estadoTarea) setAcciones(i.estadoTarea)
   }
 
   return (
@@ -100,6 +101,8 @@ export default function Pendientes() {
           )}
         </section>
       )}
+
+      {acciones && <HojaAccionesTarea key={acciones.tarea.id} estado={acciones} onCerrar={() => setAcciones(null)} />}
 
       {hoja && (
         <HojaPendiente

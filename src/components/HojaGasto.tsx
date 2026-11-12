@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
-import { db, type Gasto, type Moneda } from '../db/esquema'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db, type Gasto, type Moneda, type TareaMantenimiento } from '../db/esquema'
 import { actualizar, borrar, crear, guardarMeta, leerMeta } from '../db/repo'
 import { hoyISO } from '../lib/fechas'
 import { aTexto, leerNumero } from '../lib/formato'
@@ -21,10 +22,30 @@ const MONEDAS = [
 ] as const
 
 /** Gastos que no son gasolina ni taller: compra, traspaso, seguro, etc. */
-export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string; gasto?: Gasto; onCerrar: () => void }) {
+export function HojaGasto({
+  vehiculoId,
+  gasto,
+  tareaInicial,
+  categoriaInicial,
+  onCerrar,
+}: {
+  vehiculoId: string
+  gasto?: Gasto
+  tareaInicial?: TareaMantenimiento
+  categoriaInicial?: Gasto['categoria']
+  onCerrar: () => void
+}) {
   const avisar = useAviso()
-  const [categoria, setCategoria] = useState<Gasto['categoria']>(gasto?.categoria ?? 'compra_papeles')
-  const [descripcion, setDescripcion] = useState(gasto?.descripcion ?? '')
+  const [categoria, setCategoria] = useState<Gasto['categoria']>(gasto?.categoria ?? categoriaInicial ?? 'compra_papeles')
+  const [descripcion, setDescripcion] = useState(gasto?.descripcion ?? tareaInicial?.nombre ?? '')
+  const [taskId, setTaskId] = useState(gasto?.task_id ?? tareaInicial?.id ?? '')
+  const tareas = useLiveQuery(
+    async () =>
+      (await db.maintenance_tasks.where('vehicle_id').equals(vehiculoId).toArray())
+        .filter((t) => !t.deleted)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [vehiculoId],
+  )
   const [fecha, setFecha] = useState(gasto?.fecha ?? hoyISO())
   const [monto, setMonto] = useState(aTexto(gasto?.monto))
   const [moneda, setMoneda] = useState<Moneda>(gasto?.moneda ?? 'USD')
@@ -49,6 +70,7 @@ export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string;
     const datos = {
       categoria,
       descripcion: descripcion.trim(),
+      task_id: taskId || null,
       fecha,
       monto: m,
       moneda,
@@ -85,6 +107,12 @@ export function HojaGasto({ vehiculoId, gasto, onCerrar }: { vehiculoId: string;
         </Campo>
         <Campo etiqueta="Fecha">
           <input className="input" type="date" value={fecha} max={hoyISO()} onChange={(e) => setFecha(e.target.value)} />
+        </Campo>
+        <Campo etiqueta="Tarea periódica (opcional)" ayuda="Por ejemplo, el pago del seguro completa «Renovación RCV».">
+          <select className="input" value={taskId} onChange={(e) => setTaskId(e.target.value)}>
+            <option value="">Ninguna</option>
+            {tareas?.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+          </select>
         </Campo>
         <div className="fila-campos">
           <Campo etiqueta="Monto">

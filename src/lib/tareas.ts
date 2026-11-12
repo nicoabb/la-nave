@@ -107,21 +107,30 @@ export function ordenarPorPrioridad<T extends { estado: Estado; progreso: number
   return xs.sort((a, b) => RANGO[b.estado] - RANGO[a.estado] || b.progreso - a.progreso)
 }
 
-/** Promedio en USD de las últimas 3 veces que se hizo (ítems vinculados por visita). */
-export function estimarCosto(
-  taskId: string,
-  items: readonly { task_id: string | null; visit_id: string; monto_usd: number | null }[],
-  visitas: readonly { id: string; fecha: string }[],
-  n = 3,
-): { usd: number; veces: number } | null {
-  const porVisita = new Map<string, number>()
-  for (const i of items) {
-    if (i.task_id === taskId && i.monto_usd != null) porVisita.set(i.visit_id, (porVisita.get(i.visit_id) ?? 0) + i.monto_usd)
+/**
+ * Lo pagado por una tarea. `grupo` agrupa lo de una misma vez (los ítems de una
+ * visita, un evento de cauchos con monto, un gasto).
+ */
+export interface PagoTarea {
+  task_id: string | null
+  grupo: string
+  fecha: string
+  monto_usd: number | null
+}
+
+/** Promedio en USD de las últimas 3 veces que se hizo. */
+export function estimarCosto(taskId: string, pagos: readonly PagoTarea[], n = 3): { usd: number; veces: number } | null {
+  const porGrupo = new Map<string, { fecha: string; usd: number }>()
+  for (const p of pagos) {
+    if (p.task_id !== taskId || p.monto_usd == null) continue
+    const g = porGrupo.get(p.grupo) ?? { fecha: p.fecha, usd: 0 }
+    g.usd += p.monto_usd
+    porGrupo.set(p.grupo, g)
   }
-  const ultimas = visitas
-    .filter((v) => (porVisita.get(v.id) ?? 0) > 0)
+  const ultimas = [...porGrupo.values()]
+    .filter((g) => g.usd > 0)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .slice(0, n)
   if (!ultimas.length) return null
-  return { usd: ultimas.reduce((s, v) => s + porVisita.get(v.id)!, 0) / ultimas.length, veces: ultimas.length }
+  return { usd: ultimas.reduce((s, g) => s + g.usd, 0) / ultimas.length, veces: ultimas.length }
 }

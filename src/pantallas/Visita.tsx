@@ -119,7 +119,7 @@ function FormVisita({
   const [error, setError] = useState('')
   const [items, setItems] = useState<ItemForm[]>(() => {
     if (visita) {
-      return itemsGuardados.map((i) =>
+      const guardados = itemsGuardados.map((i) =>
         itemVacio({
           id: i.id,
           descripcion: i.descripcion,
@@ -131,6 +131,12 @@ function FormVisita({
           monto: aTexto(i.monto),
         }),
       )
+      // Llegó desde una tarea ("agregar a una visita existente"): se suma su ítem
+      const t = tareas.find((x) => x.id === tareaInicial)
+      if (t && !guardados.some((g) => g.task_id === t.id)) {
+        guardados.push(itemVacio({ descripcion: t.nombre, sistema: t.sistema, task_id: t.id, tipo: 'servicio' }))
+      }
+      return guardados
     }
     if (pendiente) return [itemVacio({ descripcion: pendiente.titulo, tipo: 'servicio' })]
     const t = tareas.find((x) => x.id === tareaInicial)

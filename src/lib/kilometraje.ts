@@ -24,6 +24,26 @@ export function momento(r: { fecha: string; created_at: string }): number {
 }
 
 /**
+ * Km aproximado del tablero en una fecha pasada, para registros sin km.
+ * - Con una lectura del tablero antes de esa fecha: esa lectura + km de las cargas hasta la fecha.
+ * - Antes de la primera lectura: se extrapola hacia atrás con el ritmo (km/día) entre lecturas.
+ */
+export function estimarKmEnFecha(correcciones: readonly Correccion[], cargas: readonly Carga[], fecha: string): number | null {
+  const cs = ordenar(correcciones)
+  if (!cs.length) return null
+  const antes = cs.filter((c) => c.fecha <= fecha).at(-1)
+  if (antes) {
+    const km = cargas.filter((c) => c.fecha > antes.fecha && c.fecha <= fecha).reduce((s, c) => s + (c.km_recorridos ?? 0), 0)
+    return Math.round(antes.km_total + km)
+  }
+  const [a, b] = [cs[0], cs.at(-1)!]
+  const dias = (Date.parse(b.fecha) - Date.parse(a.fecha)) / 86_400_000
+  if (dias <= 0) return null
+  const ritmo = (b.km_total - a.km_total) / dias
+  return Math.round(a.km_total - ritmo * ((Date.parse(a.fecha) - Date.parse(fecha)) / 86_400_000))
+}
+
+/**
  * Última corrección + km de las cargas posteriores.
  *
  * Los km de una carga son los recorridos desde la carga anterior, así que la

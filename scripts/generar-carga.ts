@@ -110,6 +110,7 @@ const maintenance_tasks = [...PLANTILLA_TAREAS, ...(mapeo.tareas_extra ?? [])]
       notas: o.notas ?? p.notas ?? '',
       es_revision: p.es_revision,
       fuente: o.fuente ?? p.fuente,
+      costo_estimado_usd: o.costo_estimado_usd ?? (p as { costo_estimado_usd?: number }).costo_estimado_usd ?? null,
     }
   })
 const tarea = (clave?: string) => {
@@ -261,6 +262,7 @@ const expenses = (mapeo.gastos ?? []).map((g: Record<string, any>, n: number) =>
     fecha: g.fecha,
     categoria: g.categoria,
     descripcion: g.descripcion,
+    task_id: tarea(g.tarea),
     monto,
     moneda: pago.moneda,
     tasa_ves_usd: r2(pago.tasa),

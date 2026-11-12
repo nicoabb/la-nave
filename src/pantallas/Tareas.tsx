@@ -11,7 +11,7 @@ import { useMantenimiento, useVehiculoActivo } from '../db/hooks'
 import { actualizar, borrar, crear, guardarMeta } from '../db/repo'
 import { SISTEMAS } from '../lib/catalogos'
 import { hoyISO } from '../lib/fechas'
-import { fechaLista, km, leerEntero, numero } from '../lib/formato'
+import { aTexto, fechaLista, km, leerEntero, leerNumero, numero } from '../lib/formato'
 import { describirIntervalo, duracion } from '../lib/tareas'
 
 /** Configuración de tareas periódicas (SPEC §5.3 y §7). */
@@ -90,7 +90,7 @@ export default function Tareas() {
   )
 }
 
-function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string; tarea?: TareaMantenimiento; onCerrar: () => void }) {
+export function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string; tarea?: TareaMantenimiento; onCerrar: () => void }) {
   const avisar = useAviso()
   const [nombre, setNombre] = useState(tarea?.nombre ?? '')
   const [sistema, setSistema] = useState(tarea?.sistema ?? 'Motor')
@@ -101,6 +101,7 @@ function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string; tarea?
   const [esRevision, setEsRevision] = useState(tarea?.es_revision ?? false)
   const [activa, setActiva] = useState(tarea?.activa ?? true)
   const [notas, setNotas] = useState(tarea?.notas ?? '')
+  const [costo, setCosto] = useState(aTexto(tarea?.costo_estimado_usd))
   const [error, setError] = useState('')
 
   const diasN = leerEntero(intervaloDias)
@@ -120,6 +121,7 @@ function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string; tarea?
       es_revision: esRevision,
       activa,
       notas: notas.trim(),
+      costo_estimado_usd: costo.trim() ? leerNumero(costo) : null,
     }
     if (tarea) await actualizar(db.maintenance_tasks, tarea.id, datos)
     else await crear(db.maintenance_tasks, { vehicle_id: vehiculoId, clave: null, fuente: '', ...datos })
@@ -166,6 +168,9 @@ function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string; tarea?
             Guardado: {[tarea.ultima_fecha_inicial && fechaLista(tarea.ultima_fecha_inicial), tarea.ultima_km_inicial != null && km(tarea.ultima_km_inicial)].filter(Boolean).join(' · ')}
           </span>
         )}
+        <Campo etiqueta="Costo estimado (USD)" ayuda="Se usa mientras no haya pagos registrados de esta tarea.">
+          <input className="input" inputMode="decimal" autoComplete="off" value={costo} onChange={(e) => setCosto(e.target.value)} />
+        </Campo>
         <Campo etiqueta="Notas (opcional)">
           <input className="input" autoComplete="off" value={notas} onChange={(e) => setNotas(e.target.value)} />
         </Campo>

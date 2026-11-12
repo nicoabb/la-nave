@@ -24,6 +24,7 @@ export async function asegurarTareas(v: Vehiculo) {
           notas: p.notas,
           es_revision: p.es_revision,
           fuente: p.fuente,
+          costo_estimado_usd: null,
         })
       }
     }

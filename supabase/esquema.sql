@@ -41,7 +41,8 @@ create table if not exists public.fuel_logs (
 create table if not exists public.maintenance_tasks (
   vehicle_id uuid, clave text, nombre text, sistema text, intervalo_km double precision,
   intervalo_dias integer, ultima_km_inicial double precision, ultima_fecha_inicial date,
-  activa boolean not null default true, notas text, es_revision boolean not null default false, fuente text
+  activa boolean not null default true, notas text, es_revision boolean not null default false, fuente text,
+  costo_estimado_usd double precision
 );
 create table if not exists public.service_visits (
   vehicle_id uuid, fecha date, km double precision, titulo text, taller text, proveedor text,
@@ -75,7 +76,7 @@ create table if not exists public.wishlist_items (
 );
 -- categoria: 'compra_papeles' | 'seguro' | 'otro'
 create table if not exists public.expenses (
-  vehicle_id uuid, fecha date, categoria text, descripcion text, monto double precision,
+  vehicle_id uuid, fecha date, categoria text, descripcion text, task_id uuid, monto double precision,
   moneda text, tasa_ves_usd double precision, tasa_origen text, monto_usd double precision
 );
 
@@ -98,6 +99,8 @@ alter table public.tire_events add column if not exists tasa_ves_usd double prec
 alter table public.tire_events add column if not exists tasa_origen text;
 alter table public.tire_events add column if not exists monto_usd double precision;
 alter table public.expenses add column if not exists tasa_origen text;
+alter table public.expenses add column if not exists task_id uuid;
+alter table public.maintenance_tasks add column if not exists costo_estimado_usd double precision;
 
 -- Columnas comunes, seguridad (RLS) y disparador en cada tabla
 do $$

@@ -27,7 +27,7 @@ import {
 } from '../db/hooks'
 import { dinero, km, kmPorLitro, numero } from '../lib/formato'
 import { duracion, estadoDe, type EstadoTarea } from '../lib/tareas'
-import { rutaParaHacer } from '../lib/rutas'
+import { HojaAccionesTarea } from '../components/HojaAccionesTarea'
 
 export default function Inicio() {
   const vehiculo = useVehiculoActivo()
@@ -39,6 +39,7 @@ export default function Inicio() {
   const navegar = useNavigate()
   const aceite = mant?.estados.find((e) => e.tarea.clave === 'aceite_motor')
   const [hoja, setHoja] = useState<'registrar' | 'corregir' | null>(null)
+  const [acciones, setAcciones] = useState<EstadoTarea<TareaMantenimiento> | null>(null)
   const cerrar = () => setHoja(null)
 
   return (
@@ -60,7 +61,7 @@ export default function Inicio() {
         </p>
       </header>
 
-      {aceite && <TarjetaAceite estado={aceite} costo={mant!.costo(aceite.tarea.id)} umbral={umbral} />}
+      {aceite && <TarjetaAceite estado={aceite} costo={mant!.costo(aceite.tarea.id)} umbral={umbral} onRegistrar={() => setAcciones(aceite)} />}
 
       <div className="fila-2">
         <TarjetaChica
@@ -89,7 +90,7 @@ export default function Inicio() {
         {pendientes && pendientes.items.length === 0 && <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>}
         <div className="lista" style={{ marginTop: 4 }}>
           {pendientes?.items.slice(0, 3).map((i) => (
-            <button key={i.clave} className="lista__fila" onClick={() => navegar(i.tarea ? rutaParaHacer(i.tarea) : '/pendientes')}>
+            <button key={i.clave} className="lista__fila" onClick={() => (i.estadoTarea ? setAcciones(i.estadoTarea) : navegar('/pendientes'))}>
               <PuntoEstado estado={i.estado} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontWeight: 600 }}>{i.titulo}</span>
@@ -106,6 +107,7 @@ export default function Inicio() {
       </button>
 
       {hoja === 'registrar' && <HojaRegistrar onCerrar={cerrar} onCorregir={() => setHoja('corregir')} />}
+      {acciones && <HojaAccionesTarea key={acciones.tarea.id} estado={acciones} onCerrar={() => setAcciones(null)} />}
       {hoja === 'corregir' && <HojaCorreccion vehiculoId={vehiculo.id} kmEstimado={kmTotal} onCerrar={cerrar} />}
     </main>
   )
@@ -115,12 +117,13 @@ function TarjetaAceite({
   estado: e,
   costo,
   umbral,
+  onRegistrar,
 }: {
   estado: EstadoTarea<TareaMantenimiento>
   costo: { usd: number; veces: number } | null
   umbral: number
+  onRegistrar: () => void
 }) {
-  const navegar = useNavigate()
   return (
     <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -162,10 +165,10 @@ function TarjetaAceite({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <span className="muted mini">
           {costo
-            ? `≈ ${dinero(Math.round(costo.usd))} según ${costo.veces === 1 ? 'tu último' : `tus últimos ${costo.veces}`}`
+            ? `≈ ${dinero(Math.round(costo.usd))} según ${costo.veces === 0 ? 'tu estimado' : costo.veces === 1 ? 'tu último' : `tus últimos ${costo.veces}`}`
             : 'Sin estimado'}
         </span>
-        <button className="enlace mini" onClick={() => navegar(rutaParaHacer(e.tarea))}>Registrar cambio</button>
+        <button className="enlace mini" onClick={onRegistrar}>Registrar cambio</button>
       </div>
     </section>
   )
