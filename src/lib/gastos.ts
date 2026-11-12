@@ -50,11 +50,12 @@ export const CATEGORIAS: { clave: Categoria; texto: string; color: string }[] = 
   { clave: 'otro', texto: 'Otros gastos', color: 'var(--text-muted)' },
 ]
 
-export type TasaOrigen = 'manual' | 'wallet' | 'estimada'
+export type TasaOrigen = 'manual' | 'wallet' | 'estimada' | 'comprobante'
 
 /** Texto de ayuda bajo el campo de tasa, según su origen (si no se ha tocado). */
 export function ayudaTasa(moneda: Moneda, origen: TasaOrigen | null | undefined, sinTocar: boolean): string {
   if (sinTocar && origen === 'wallet') return 'Tasa tomada de Wallet. Puedes corregirla.'
   if (sinTocar && origen === 'estimada') return 'Tasa estimada con la fecha más cercana. Revísala.'
+  if (sinTocar && origen === 'comprobante') return 'Tasa tomada del comprobante.'
   return moneda === 'VES' ? 'Obligatoria si pagaste en Bs' : 'Opcional: sirve para ver el gasto en Bs'
 }

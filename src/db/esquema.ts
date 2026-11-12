@@ -32,8 +32,8 @@ export interface CorreccionOdometro extends Base {
 
 export type Moneda = 'USD' | 'VES'
 
-/** De dónde salió la tasa: escrita a mano, tomada de Wallet o estimada (fila en Bs más cercana). */
-export type TasaOrigen = 'manual' | 'wallet' | 'estimada'
+/** De dónde salió la tasa: a mano, de Wallet, estimada (fila en Bs más cercana) o de un comprobante. */
+export type TasaOrigen = 'manual' | 'wallet' | 'estimada' | 'comprobante'
 
 export interface CargaGasolina extends Base {
   vehicle_id: string
@@ -165,6 +165,24 @@ export interface Deseo extends Base {
   visit_id: string | null
 }
 
+/**
+ * Comprobante (PDF o imagen) adjunto a una visita. El archivo vive solo en el
+ * bucket privado comprobantes (ruta user_id/path); aquí van los metadatos.
+ */
+export interface Comprobante extends Base {
+  visit_id: string
+  nombre: string
+  mime: string
+  bytes: number
+  path: string // "visit_id/uuid.ext"
+}
+
+/** Archivo de comprobante esperando subir (se borra del teléfono al subirse). */
+export interface ComprobanteEnCola {
+  path: string
+  blob: Blob
+}
+
 /** Lo que no es gasolina ni taller: precio de compra, traspaso, seguro, otros. */
 export interface Gasto extends Base {
   vehicle_id: string
@@ -204,7 +222,9 @@ export const db = new Dexie('la-nave') as Dexie & {
   tire_events: Table<EventoCaucho, string>
   wishlist_items: Table<Deseo, string>
   expenses: Table<Gasto, string>
+  visit_receipts: Table<Comprobante, string>
   meta: Table<Meta, string>
+  comprobantes_cola: Table<ComprobanteEnCola, string>
   fotos: Table<Foto, string>
 }
 
@@ -253,6 +273,11 @@ db.version(5)
     })
   })
 
+db.version(6).stores({
+  visit_receipts: 'id, visit_id, updated_at',
+  comprobantes_cola: 'path',
+})
+
 export const TABLAS_DATOS = [
   'vehicles',
   'odometer_corrections',
@@ -266,4 +291,5 @@ export const TABLAS_DATOS = [
   'tire_events',
   'wishlist_items',
   'expenses',
+  'visit_receipts',
 ] as const

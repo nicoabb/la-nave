@@ -215,9 +215,14 @@ function FormVisita({
   }
 
   async function borrarVisita() {
-    if (!visita || !window.confirm('¿Borrar esta visita y todos sus ítems?')) return
-    await db.transaction('rw', db.service_visits, db.service_items, async () => {
+    if (!visita || !window.confirm('¿Borrar esta visita, sus ítems y sus comprobantes?')) return
+    await db.transaction('rw', [db.service_visits, db.service_items, db.visit_receipts, db.comprobantes_cola], async () => {
       for (const i of itemsGuardados) await borrar(db.service_items, i.id)
+      // Los comprobantes también: el archivo se quita del bucket al sincronizar
+      for (const c of await db.visit_receipts.where('visit_id').equals(visita.id).toArray()) {
+        await db.comprobantes_cola.delete(c.path)
+        if (!c.deleted) await borrar(db.visit_receipts, c.id)
+      }
       await borrar(db.service_visits, visita.id)
     })
     avisar('Visita borrada')

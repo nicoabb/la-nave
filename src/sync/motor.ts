@@ -84,9 +84,15 @@ async function subir(uid: string) {
       })
       const { error } = await supabase!.from(t).upsert(filas)
       if (error) throw new Error(`${t}: ${error.message}`)
+      // Comprobantes borrados: también se quita el archivo del bucket
+      if (t === 'visit_receipts') {
+        const borrados = pendientes.slice(i, i + LOTE).filter((r) => r.deleted).map((r) => `${uid}/${r.path}`)
+        if (borrados.length) await supabase!.storage.from('comprobantes').remove(borrados)
+      }
     }
   }
   await subirFotos(uid)
+  await subirComprobantes(uid)
   await guardarMeta('sync_ultimo_envio', inicio)
 }
 
@@ -150,14 +156,37 @@ async function bajarFotos(uid: string) {
   }
 }
 
+// ---------- Comprobantes ----------
+/** Sube la cola y libera el espacio en el teléfono (se abren luego con URL firmada). */
+async function subirComprobantes(uid: string) {
+  for (const c of await db.comprobantes_cola.toArray()) {
+    const { error } = await supabase!.storage
+      .from('comprobantes')
+      .upload(`${uid}/${c.path}`, c.blob, { upsert: true, contentType: c.blob.type || undefined })
+    if (error) throw new Error(`comprobantes: ${error.message}`)
+    await db.comprobantes_cola.delete(c.path)
+  }
+}
+
+/** URL temporal (5 min) para abrir un comprobante ya subido. */
+export async function urlComprobante(path: string): Promise<string> {
+  if (!supabase) throw new Error('Sin sincronización configurada')
+  const { data: s } = await supabase.auth.getSession()
+  if (!s.session) throw new Error('Inicia sesión para ver los comprobantes')
+  const { data, error } = await supabase.storage.from('comprobantes').createSignedUrl(`${s.session.user.id}/${path}`, 300)
+  if (error) throw new Error(error.message)
+  return data.signedUrl
+}
+
 // ---------- Sesión ----------
 
 /** Borra todo lo local (al cambiar de cuenta o cerrar sesión). */
 export async function borrarDatosLocales() {
-  await db.transaction('rw', [...TABLAS_DATOS.map((t) => db[t]), db.meta, db.fotos], async () => {
+  await db.transaction('rw', [...TABLAS_DATOS.map((t) => db[t]), db.meta, db.fotos, db.comprobantes_cola], async () => {
     for (const t of TABLAS_DATOS) await db[t].clear()
     await db.meta.clear()
     await db.fotos.clear()
+    await db.comprobantes_cola.clear()
   })
 }
 
@@ -193,7 +222,7 @@ export async function contarPendientes(): Promise<number> {
   for (const t of TABLAS_DATOS) {
     n += ultimoEnvio ? await tabla(t).where('updated_at').above(ultimoEnvio).count() : await tabla(t).count()
   }
-  return n + (await db.fotos.filter((f) => !f.subida).count())
+  return n + (await db.fotos.filter((f) => !f.subida).count()) + (await db.comprobantes_cola.count())
 }
 
 export async function cerrarSesion(): Promise<boolean> {

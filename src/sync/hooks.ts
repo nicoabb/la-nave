@@ -26,7 +26,7 @@ export function usePendientesSync(): number {
   return useLiveQuery(
     async () => {
       // Se leen las tablas para que liveQuery se suscriba a sus cambios
-      await Promise.all([...TABLAS_DATOS.map((t) => db[t].count()), db.meta.count(), db.fotos.count()])
+      await Promise.all([...TABLAS_DATOS.map((t) => db[t].count()), db.meta.count(), db.fotos.count(), db.comprobantes_cola.count()])
       return contarPendientes()
     },
     [],

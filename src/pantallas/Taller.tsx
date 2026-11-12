@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, ChevronRight, CircleDot, Gauge, Package, Pencil, Plus, Wrench } from 'lucide-react'
 import { Encabezado, PuntoEstado, Vacio } from '../components/comunes'
+import { ComprobantesVisita } from '../components/Comprobantes'
 import { HojaProducto } from '../components/FormProducto'
 import { db, type ItemTaller, type Producto, type VisitaTaller } from '../db/esquema'
 import { useCauchos, useFotoUrl, useMantenimiento, useVehiculoActivo } from '../db/hooks'
@@ -149,7 +150,7 @@ function TarjetaVisita({
               <strong>Total</strong>
               <span className="muted mini" style={{ display: 'block' }}>
                 Pagado en {visita.moneda === 'VES' ? 'Bs' : 'USD'}
-                {visita.moneda === 'VES' && visita.tasa_ves_usd && ` · ${visita.tasa_origen === 'estimada' ? 'tasa estimada' : visita.tasa_origen === 'wallet' ? 'tasa de Wallet' : 'tasa guardada'} (${numero(visita.tasa_ves_usd, 0, 2)} Bs/USD)`}
+                {visita.moneda === 'VES' && visita.tasa_ves_usd && ` · ${visita.tasa_origen === 'estimada' ? 'tasa estimada' : visita.tasa_origen === 'wallet' ? 'tasa de Wallet' : visita.tasa_origen === 'comprobante' ? 'tasa del comprobante' : 'tasa guardada'} (${numero(visita.tasa_ves_usd, 0, 2)} Bs/USD)`}
               </span>
             </span>
             <span style={{ textAlign: 'right' }}>
@@ -164,6 +165,8 @@ function TarjetaVisita({
             </span>
           )}
           {visita.nota && <p className="muted" style={{ margin: 0 }}>{visita.nota}</p>}
+
+          <ComprobantesVisita visitId={visita.id} />
 
           <button className="btn btn--bloque" onClick={() => navegar(`/taller/visita/${visita.id}`)}>
             <Pencil size={16} strokeWidth={1.8} /> Editar visita

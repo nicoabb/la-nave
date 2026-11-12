@@ -79,6 +79,14 @@ create table if not exists public.expenses (
   moneda text, tasa_ves_usd double precision, tasa_origen text, monto_usd double precision
 );
 
+-- Comprobantes (PDF/imagen) de una visita. El archivo va en el bucket privado
+-- 'comprobantes' (user_id/visit_id/archivo); aquí solo los metadatos.
+create table if not exists public.visit_receipts (
+  visit_id uuid, nombre text, mime text, bytes integer, path text
+);
+
+-- tasa_origen: 'manual' | 'wallet' | 'estimada' | 'comprobante'
+
 -- Por si las tablas ya existían de una versión anterior de este script
 alter table public.fuel_logs alter column "full" drop not null;
 alter table public.fuel_logs add column if not exists tasa_origen text;
@@ -98,7 +106,8 @@ declare
 begin
   foreach t in array array[
     'vehicles', 'odometer_corrections', 'fuel_logs', 'maintenance_tasks', 'service_visits',
-    'service_items', 'products', 'inspections', 'tires', 'tire_events', 'wishlist_items', 'expenses'
+    'service_items', 'products', 'inspections', 'tires', 'tire_events', 'wishlist_items', 'expenses',
+    'visit_receipts'
   ] loop
     execute format('alter table public.%I add column if not exists id uuid primary key', t);
     execute format('alter table public.%I add column if not exists user_id uuid not null default auth.uid() references auth.users(id) on delete cascade', t);
@@ -145,3 +154,24 @@ create policy "fotos: cambiar las propias" on storage.objects for update to auth
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "fotos: borrar las propias" on storage.objects for delete to authenticated
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- ---------------------------------------------------------------
+-- Comprobantes: bucket privado, máx. 5 MB, solo PDF e imágenes.
+-- Se abren con URL firmada; cada quien solo en su carpeta.
+-- ---------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('comprobantes', 'comprobantes', false, 5242880,
+        array['application/pdf', 'image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do update
+  set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "comprobantes: ver los propios" on storage.objects;
+drop policy if exists "comprobantes: subir los propios" on storage.objects;
+drop policy if exists "comprobantes: borrar los propios" on storage.objects;
+
+create policy "comprobantes: ver los propios" on storage.objects for select to authenticated
+  using (bucket_id = 'comprobantes' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "comprobantes: subir los propios" on storage.objects for insert to authenticated
+  with check (bucket_id = 'comprobantes' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "comprobantes: borrar los propios" on storage.objects for delete to authenticated
+  using (bucket_id = 'comprobantes' and (storage.foldername(name))[1] = (select auth.uid())::text);
