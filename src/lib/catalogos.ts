@@ -2,7 +2,11 @@
 
 export const SISTEMAS = [
   'Motor',
+  'Enfriamiento',
+  'Combustible',
   'Aire acondicionado',
+  'Dirección',
+  'Suspensión',
   'Tren delantero',
   'Frenos',
   'Eléctrico',
