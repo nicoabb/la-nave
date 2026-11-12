@@ -206,8 +206,7 @@ export function useCauchos(vehiculoId: string) {
     const servicio = (clave: string) => mant.estados.find((e) => e.tarea.clave === clave)
     const servicios = {
       presion: servicio('presion_cauchos'),
-      rotacion: servicio('rotacion'),
-      balanceo: servicio('balanceo'),
+      balanceo: servicio('balanceo'), // balanceo y rotación, juntos
       alineacion: servicio('alineacion'),
     }
 

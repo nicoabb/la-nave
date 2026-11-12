@@ -15,13 +15,16 @@ import Configuracion from './pantallas/Configuracion'
 import Tareas from './pantallas/Tareas'
 import Visita from './pantallas/Visita'
 import Revision from './pantallas/Revision'
-import { asegurarTareas } from './db/siembra'
+import { asegurarTareas, unirBalanceoYRotacion } from './db/siembra'
 
 export default function App() {
   const vehiculo = useVehiculo()
 
   useEffect(() => {
-    if (vehiculo) asegurarTareas(vehiculo).catch(console.error)
+    if (!vehiculo) return
+    asegurarTareas(vehiculo)
+      .then(() => unirBalanceoYRotacion(vehiculo.id))
+      .catch(console.error)
   }, [vehiculo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (vehiculo === undefined) return <div className="app"><Sincronizador /></div>

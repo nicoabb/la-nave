@@ -18,9 +18,9 @@ export const VIDA_UTIL_KM = 30000
 export const EDAD_PRONTO = 6
 export const EDAD_URGENTE = 10
 
-/** Tipo de evento → clave de la tarea periódica que completa. */
+/** Tipo de evento → clave de la tarea periódica que completa (balanceo y rotación son una sola). */
 export const TAREA_DE_EVENTO: Record<string, string> = {
-  rotacion: 'rotacion',
+  rotacion: 'balanceo',
   balanceo: 'balanceo',
   alineacion: 'alineacion',
   presion: 'presion_cauchos',

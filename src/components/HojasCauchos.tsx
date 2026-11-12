@@ -160,8 +160,7 @@ export function HojaCaucho({
 }
 
 const TITULOS: Partial<Record<TipoEventoCaucho, string>> = {
-  rotacion: 'Rotación',
-  balanceo: 'Balanceo',
+  balanceo: 'Balanceo y rotación',
   alineacion: 'Alineación',
   presion: 'Presión de aire',
 }
@@ -177,7 +176,7 @@ const EJES = [
   { valor: 'ambas', texto: 'Ambas' },
 ] as const
 
-/** Registrar un servicio de cauchos (rotación, balanceo, alineación, presión). */
+/** Registrar un servicio de cauchos: balanceo y rotación (juntos), alineación o presión. */
 export function HojaServicio({
   vehiculoId,
   tipo,
@@ -186,7 +185,7 @@ export function HojaServicio({
   onCerrar,
 }: {
   vehiculoId: string
-  tipo: 'rotacion' | 'balanceo' | 'alineacion' | 'presion'
+  tipo: 'balanceo' | 'alineacion' | 'presion'
   kmTotal: number | null
   montados: Caucho[]
   onCerrar: () => void
@@ -213,10 +212,8 @@ export function HojaServicio({
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
-    if (tipo === 'rotacion' && !rotacionValida(mapa)) return setError('Hay dos cauchos en la misma posición.')
-    if (tipo === 'rotacion' && montados.every((c) => mapa[c.id] === c.posicion)) {
-      if (!window.confirm('No moviste ningún caucho. ¿Registrar la rotación de todas formas?')) return
-    }
+    if (tipo === 'balanceo' && !rotacionValida(mapa)) return setError('Hay dos cauchos en la misma posición.')
+    const movidos = montados.filter((c) => mapa[c.id] !== c.posicion)
     const kmN = km.trim() ? leerEntero(km) : null
     let pago = SIN_PAGO
     if (conPago && monto.trim()) {
@@ -229,27 +226,28 @@ export function HojaServicio({
       pago = { monto: m, moneda, tasa_ves_usd: tasaOk, tasa_origen: tasaOk ? 'manual' : null, monto_usd: aUsd(m, moneda, tasaOk) }
     }
     await db.transaction('rw', db.tires, db.tire_events, async () => {
-      let detalle: Record<string, string> | null = null
-      if (tipo === 'alineacion') detalle = { eje }
-      if (tipo === 'rotacion') {
-        detalle = {}
-        for (const c of montados) {
-          if (mapa[c.id] !== c.posicion) {
-            detalle[c.id] = mapa[c.id]
-            await actualizar(db.tires, c.id, { posicion: mapa[c.id] })
-          }
+      await registrarEvento({ vehicle_id: vehiculoId, fecha, km: kmN, tipo, detalle: tipo === 'alineacion' ? { eje } : null }, pago)
+      // Balanceo y rotación van juntos: si se cambiaron de lugar, se mueven y queda el evento de rotación
+      if (tipo === 'balanceo' && movidos.length) {
+        const detalle: Record<string, string> = {}
+        for (const c of movidos) {
+          detalle[c.id] = mapa[c.id]
+          await actualizar(db.tires, c.id, { posicion: mapa[c.id] })
         }
+        await registrarEvento({ vehicle_id: vehiculoId, fecha, km: kmN, tipo: 'rotacion', detalle })
       }
-      await registrarEvento({ vehicle_id: vehiculoId, fecha, km: kmN, tipo, detalle }, pago)
     })
-    avisar(`${TITULOS[tipo]} registrada`)
+    avisar(
+      tipo === 'balanceo' ? 'Balanceo y rotación registrados' : `${TITULOS[tipo]} registrada`,
+      tipo === 'balanceo' && !movidos.length ? 'Sin cambios de posición en el dibujo.' : undefined,
+    )
     onCerrar()
   }
 
   return (
     <Hoja titulo={TITULOS[tipo]!} onCerrar={onCerrar}>
       <form className="form" onSubmit={guardar} noValidate>
-        {tipo === 'rotacion' && montados.length > 0 && (
+        {tipo === 'balanceo' && montados.length > 0 && (
           <SelectorRotacion montados={montados} original={original} arreglo={arreglo} onCambio={setArreglo} />
         )}
         {tipo === 'alineacion' && (
@@ -385,7 +383,7 @@ function SelectorRotacion({
 
   return (
     <>
-      <span className="campo__etiqueta">¿Cómo los rotaron?</span>
+      <span className="campo__etiqueta">¿Cómo los rotaron? <span className="muted" style={{ fontWeight: 400 }}>(si no cambiaron de lugar, déjalo así)</span></span>
       <div className="fila-campos">
         {PATRONES.map((pt) => (
           <button

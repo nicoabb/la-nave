@@ -14,7 +14,7 @@ const COLOR: Record<Estado, string> = { urgente: 'var(--coral)', pronto: 'var(--
 
 type HojaAbierta =
   | { tipo: 'caucho'; posicion: Posicion; caucho?: Caucho }
-  | { tipo: 'servicio'; servicio: 'rotacion' | 'balanceo' | 'alineacion' | 'presion' }
+  | { tipo: 'servicio'; servicio: 'balanceo' | 'alineacion' | 'presion' }
   | null
 
 export default function Cauchos() {
@@ -95,8 +95,7 @@ export default function Cauchos() {
             }
             onClick={() => setHoja({ tipo: 'servicio', servicio: 'presion' })}
           />
-          <FilaServicio nombre="Rotación" estado={servicios.rotacion} onClick={() => setHoja({ tipo: 'servicio', servicio: 'rotacion' })} />
-          <FilaServicio nombre="Balanceo" estado={servicios.balanceo} onClick={() => setHoja({ tipo: 'servicio', servicio: 'balanceo' })} />
+          <FilaServicio nombre="Balanceo y rotación" estado={servicios.balanceo} onClick={() => setHoja({ tipo: 'servicio', servicio: 'balanceo' })} />
           <FilaServicio nombre="Alineación" estado={servicios.alineacion} onClick={() => setHoja({ tipo: 'servicio', servicio: 'alineacion' })} />
         </div>
         <span className="muted mini">Toca un servicio para registrarlo con otra fecha o km.</span>

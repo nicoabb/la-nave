@@ -18,7 +18,6 @@ import { HojaGasto } from './HojaGasto'
 /** Tareas que se registran como evento de cauchos. */
 const EVENTO_DE_TAREA: Record<string, TipoEventoCaucho> = {
   presion_cauchos: 'presion',
-  rotacion: 'rotacion',
   balanceo: 'balanceo',
   alineacion: 'alineacion',
 }
