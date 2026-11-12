@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
 import { db, type Caucho, type EventoCaucho, type Posicion, type TipoEventoCaucho } from '../db/esquema'
 import { actualizar, borrar, crear } from '../db/repo'
-import { POSICIONES, rotacionValida, textoPosicion } from '../lib/cauchos'
+import { edadAnios, POSICIONES, rotacionValida, textoEdad, textoPosicion } from '../lib/cauchos'
 import { hoyISO } from '../lib/fechas'
 import { leerEntero, numero } from '../lib/formato'
 import { useAviso } from './Aviso'
@@ -47,9 +47,11 @@ export function HojaCaucho({
   async function guardar(e: FormEvent) {
     e.preventDefault()
     const semana = dotSemana.trim() ? leerEntero(dotSemana) : null
-    const anio = dotAnio.trim() ? leerEntero(dotAnio) : null
-    if (semana !== null && (semana < 1 || semana > 53)) return setError('La semana del DOT va de 1 a 53.')
-    if (anio !== null && (anio < 1990 || anio > 2100)) return setError('El año del DOT no es válido.')
+    let anio = dotAnio.trim() ? leerEntero(dotAnio) : null
+    if (anio !== null && anio < 100) anio += 2000 // "25" → 2025
+    if (semana !== null && (semana < 1 || semana > 53)) return setError('La semana va de 1 a 53.')
+    if (anio !== null && (anio < 1990 || anio > new Date().getFullYear() + 1))
+      return setError('Escribe el año completo, por ejemplo 2025.')
 
     const otro = ocupadas.get(posicion)
     if (otro && otro.id !== caucho?.id) {
@@ -112,17 +114,21 @@ export function HojaCaucho({
             <input className="input" autoComplete="off" value={marca} onChange={(e) => setMarca(e.target.value)} />
           </Campo>
           <Campo etiqueta="Medida">
-            <input className="input" autoComplete="off" placeholder="Ej.: 185/65 R14" value={medida} onChange={(e) => setMedida(e.target.value)} />
+            <input className="input" autoComplete="off" placeholder="Ej.: 195/60 R15" value={medida} onChange={(e) => setMedida(e.target.value)} />
           </Campo>
         </div>
         <div className="fila-campos">
-          <Campo etiqueta="DOT: semana" ayuda="Los 2 primeros dígitos">
-            <input className="input" inputMode="numeric" autoComplete="off" value={dotSemana} onChange={(e) => setDotSemana(e.target.value)} />
+          <Campo etiqueta="Semana de fabricación" ayuda="Ej.: 08">
+            <input className="input" inputMode="numeric" autoComplete="off" placeholder="1 a 53" value={dotSemana} onChange={(e) => setDotSemana(e.target.value)} />
           </Campo>
-          <Campo etiqueta="DOT: año" ayuda="Ej.: 2324 → 2024">
-            <input className="input" inputMode="numeric" autoComplete="off" value={dotAnio} onChange={(e) => setDotAnio(e.target.value)} />
+          <Campo etiqueta="Año de fabricación" ayuda="Ej.: 2023">
+            <input className="input" inputMode="numeric" autoComplete="off" placeholder="aaaa" value={dotAnio} onChange={(e) => setDotAnio(e.target.value)} />
           </Campo>
         </div>
+        <span className="muted mini" style={{ marginTop: -6 }}>
+          Están en el costado del caucho, al final del código DOT: 4 números donde los 2 primeros son la semana y los 2
+          últimos el año. Por ejemplo, <strong>0823</strong> es la semana 8 de 2023.
+        </span>
         <div className="fila-campos">
           <Campo etiqueta="Montado el">
             <input className="input" type="date" value={fechaMontaje} max={hoyISO()} onChange={(e) => setFechaMontaje(e.target.value)} />
@@ -180,12 +186,20 @@ export function HojaServicio({
   const [fecha, setFecha] = useState(hoyISO())
   const [km, setKm] = useState(kmTotal ? numero(Math.round(kmTotal)) : '')
   const [eje, setEje] = useState<(typeof EJES)[number]['valor']>('ambas')
-  const [mapa, setMapa] = useState<Record<string, Posicion>>(() => Object.fromEntries(montados.map((c) => [c.id, c.posicion])))
+  const original = arregloDe(montados)
+  const [arreglo, setArreglo] = useState<Arreglo>(original)
   const [error, setError] = useState('')
+
+  // Dónde quedó cada caucho según el arreglo final
+  const mapa: Record<string, Posicion> = {}
+  for (const p of ORDEN) if (arreglo[p]) mapa[arreglo[p]!] = p
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
     if (tipo === 'rotacion' && !rotacionValida(mapa)) return setError('Hay dos cauchos en la misma posición.')
+    if (tipo === 'rotacion' && montados.every((c) => mapa[c.id] === c.posicion)) {
+      if (!window.confirm('No moviste ningún caucho. ¿Registrar la rotación de todas formas?')) return
+    }
     const kmN = km.trim() ? leerEntero(km) : null
     await db.transaction('rw', db.tires, db.tire_events, async () => {
       let detalle: Record<string, string> | null = null
@@ -209,16 +223,7 @@ export function HojaServicio({
     <Hoja titulo={TITULOS[tipo]!} onCerrar={onCerrar}>
       <form className="form" onSubmit={guardar} noValidate>
         {tipo === 'rotacion' && montados.length > 0 && (
-          <>
-            <span className="muted mini">Indica dónde quedó cada caucho.</span>
-            {montados.map((c) => (
-              <Campo key={c.id} etiqueta={`Estaba en: ${textoPosicion(c.posicion)}${c.dot_anio ? ` (${c.dot_anio})` : ''}`}>
-                <select className="input" value={mapa[c.id]} onChange={(e) => setMapa((m) => ({ ...m, [c.id]: e.target.value as Posicion }))}>
-                  {POSICIONES.map((p) => <option key={p.valor} value={p.valor}>{p.texto}</option>)}
-                </select>
-              </Campo>
-            ))}
-          </>
+          <SelectorRotacion montados={montados} original={original} arreglo={arreglo} onCambio={setArreglo} />
         )}
         {tipo === 'alineacion' && (
           <Campo etiqueta="Alineación">
@@ -238,6 +243,168 @@ export function HojaServicio({
         <span className="muted mini">Si lo hiciste en el taller y quieres guardar el costo, regístralo también como visita.</span>
       </form>
     </Hoja>
+  )
+}
+
+// ---------- Rotación: patrón + tocar para intercambiar ----------
+
+type Arreglo = Record<Posicion, string | null>
+const ORDEN: Posicion[] = ['DI', 'DD', 'TI', 'TD', 'REP']
+
+function arregloDe(montados: Caucho[]): Arreglo {
+  const a: Arreglo = { DI: null, DD: null, TI: null, TD: null, REP: null }
+  for (const c of montados) a[c.posicion] = c.id
+  return a
+}
+
+type Movimiento = Partial<Record<Posicion, Posicion>>
+
+const PATRONES: { clave: string; texto: string; ayuda: string; mov: Movimiento; flechas: [number, number, number, number][] }[] = [
+  {
+    clave: 'adelante_atras',
+    texto: 'Adelante ↔ atrás',
+    ayuda: 'Cada lado por su cuenta',
+    mov: { DI: 'TI', TI: 'DI', DD: 'TD', TD: 'DD' },
+    flechas: [[12, 14, 12, 46], [12, 46, 12, 14], [36, 14, 36, 46], [36, 46, 36, 14]],
+  },
+  {
+    clave: 'cruz',
+    texto: 'En cruz',
+    ayuda: 'Los de atrás cruzan',
+    mov: { DI: 'TI', DD: 'TD', TI: 'DD', TD: 'DI' },
+    flechas: [[12, 14, 12, 46], [36, 14, 36, 46], [12, 46, 36, 14], [36, 46, 12, 14]],
+  },
+]
+
+function aplicar(original: Arreglo, mov: Movimiento): Arreglo {
+  const r: Arreglo = { DI: null, DD: null, TI: null, TD: null, REP: null }
+  for (const p of ORDEN) if (original[p]) r[mov[p] ?? p] = original[p]
+  return r
+}
+
+const mismoArreglo = (a: Arreglo, b: Arreglo) => ORDEN.every((p) => a[p] === b[p])
+
+function SelectorRotacion({
+  montados,
+  original,
+  arreglo,
+  onCambio,
+}: {
+  montados: Caucho[]
+  original: Arreglo
+  arreglo: Arreglo
+  onCambio: (a: Arreglo) => void
+}) {
+  const [seleccion, setSeleccion] = useState<Posicion | null>(null)
+  const porId = new Map(montados.map((c) => [c.id, c]))
+  const hoy = hoyISO()
+  const patronActivo = PATRONES.find((p) => mismoArreglo(aplicar(original, p.mov), arreglo))?.clave ?? null
+  const cambiado = !mismoArreglo(original, arreglo)
+
+  function tocar(p: Posicion) {
+    if (seleccion === null) return setSeleccion(p)
+    if (seleccion !== p) onCambio({ ...arreglo, [seleccion]: arreglo[p], [p]: arreglo[seleccion] })
+    setSeleccion(null)
+  }
+
+  const etiqueta = (id: string | null) => {
+    const c = id ? porId.get(id) : null
+    if (!c) return 'Vacío'
+    const edad = edadAnios(c.dot_anio, c.dot_semana, hoy)
+    return c.dot_anio && edad !== null ? `${c.dot_anio} · ${textoEdad(edad)}` : c.marca || 'Sin DOT'
+  }
+
+  const Caja = ({ p, alinear }: { p: Posicion; alinear: 'left' | 'right' }) => {
+    const movido = arreglo[p] !== original[p]
+    return (
+      <button
+        type="button"
+        className={`rotar__caucho${seleccion === p ? ' rotar__caucho--sel' : ''}`}
+        style={{ textAlign: alinear }}
+        aria-pressed={seleccion === p}
+        onClick={() => tocar(p)}
+      >
+        <span className="muted mini">{textoPosicion(p)}</span>
+        <strong style={{ fontWeight: 600, color: movido ? 'var(--lavanda)' : undefined }}>{etiqueta(arreglo[p])}</strong>
+      </button>
+    )
+  }
+
+  const cambios = montados
+    .map((c) => {
+      const nueva = ORDEN.find((p) => arreglo[p] === c.id)!
+      return nueva !== c.posicion ? `${etiqueta(c.id)}: ${textoPosicion(c.posicion)} → ${textoPosicion(nueva)}` : null
+    })
+    .filter(Boolean)
+
+  return (
+    <>
+      <span className="campo__etiqueta">¿Cómo los rotaron?</span>
+      <div className="fila-campos">
+        {PATRONES.map((pt) => (
+          <button
+            key={pt.clave}
+            type="button"
+            className={`patron${patronActivo === pt.clave ? ' patron--activo' : ''}`}
+            aria-pressed={patronActivo === pt.clave}
+            onClick={() => {
+              setSeleccion(null)
+              onCambio(aplicar(original, pt.mov))
+            }}
+          >
+            <svg viewBox="0 0 48 60" width="40" height="50" aria-hidden>
+              <defs>
+                <marker id={`punta-${pt.clave}`} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto">
+                  <path d="M0 0 L6 3 L0 6 Z" style={{ fill: 'currentColor' }} />
+                </marker>
+              </defs>
+              {[[12, 10], [36, 10], [12, 50], [36, 50]].map(([x, y]) => (
+                <rect key={`${x}${y}`} x={x - 4} y={y - 7} width="8" height="14" rx="2" style={{ fill: 'currentColor', opacity: 0.35 }} />
+              ))}
+              {pt.flechas.map(([x1, y1, x2, y2], i) => (
+                <line
+                  key={i}
+                  x1={x1 + (i % 2 && pt.clave === 'adelante_atras' ? 3 : 0)}
+                  y1={y1}
+                  x2={x2 + (i % 2 && pt.clave === 'adelante_atras' ? 3 : 0)}
+                  y2={y2}
+                  markerEnd={`url(#punta-${pt.clave})`}
+                  style={{ stroke: 'currentColor', strokeWidth: 1.6 }}
+                />
+              ))}
+            </svg>
+            <span style={{ fontWeight: 600 }}>{pt.texto}</span>
+            <span className="mini" style={{ opacity: 0.8 }}>{pt.ayuda}</span>
+          </button>
+        ))}
+      </div>
+
+      <span className="muted mini">
+        {seleccion
+          ? `Ahora toca el caucho con el que intercambiaste el de ${textoPosicion(seleccion).toLowerCase()}.`
+          : '¿Fue distinto? Toca un caucho y luego otro para intercambiarlos.'}
+      </span>
+
+      <div className="rotar">
+        <span className="muted mini rotar__frente">Frente</span>
+        <Caja p="DI" alinear="right" />
+        <div className="rotar__carro" aria-hidden />
+        <Caja p="DD" alinear="left" />
+        <Caja p="TI" alinear="right" />
+        <Caja p="TD" alinear="left" />
+      </div>
+      <Caja p="REP" alinear="left" />
+
+      {cambiado && (
+        <div className="resultado" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+          <span className="mini" style={{ fontWeight: 600 }}>Así quedan:</span>
+          {cambios.map((t) => <span key={t} className="mini">{t}</span>)}
+          <button type="button" className="enlace mini" style={{ marginTop: 4 }} onClick={() => { setSeleccion(null); onCambio(original) }}>
+            Deshacer
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 

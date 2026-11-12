@@ -6,9 +6,11 @@ dev-dist/
 !.env.example
 *.local
 
-# Datos personales de importación (Keep)
+# Datos personales de importación (Keep y datos del carro). NUNCA se suben.
 Takeout/
 import/
+Import/
+/[Ii]mport/
 
 .DS_Store
 Thumbs.db

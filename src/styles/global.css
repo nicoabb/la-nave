@@ -701,3 +701,64 @@ textarea.input {
   background: none;
   text-align: left;
 }
+/* ---------- Rotación ---------- */
+.patron {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: center;
+  font-size: var(--fs-secundario);
+}
+
+.patron--activo {
+  background: var(--lavanda);
+  border-color: var(--lavanda);
+  color: var(--on-lavanda);
+}
+
+.rotar {
+  display: grid;
+  grid-template-columns: 1fr 56px 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 8px;
+}
+
+.rotar__frente {
+  grid-column: 1 / -1;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rotar__carro {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  border-radius: 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  min-height: 140px;
+}
+
+.rotar__caucho {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: var(--fs-secundario);
+}
+
+.rotar__caucho--sel {
+  border: 2px solid var(--lavanda);
+  background: var(--surface-2);
+}

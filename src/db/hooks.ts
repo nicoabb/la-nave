@@ -194,7 +194,7 @@ export function useCauchos(vehiculoId: string) {
     if (malos) partes.push(`${malos} ${malos === 1 ? 'caucho' : 'cauchos'} por cambiar`)
     const p = servicios.presion
     if (p && !p.desconocida && p.restanteDias != null) {
-      partes.push(p.restanteDias > 0 ? `aire en ${p.restanteDias} ${p.restanteDias === 1 ? 'día' : 'días'}` : p.restanteDias === 0 ? 'aire hoy' : 'aire vencido')
+      partes.push(p.restanteDias === p.tarea.intervalo_dias ? 'aire revisado hoy' : p.restanteDias > 0 ? `aire en ${p.restanteDias} ${p.restanteDias === 1 ? 'día' : 'días'}` : p.restanteDias === 0 ? 'aire hoy' : 'aire vencido')
     } else if (p?.desconocida) partes.push('aire sin registro')
     if (!cauchos.length) partes.unshift('Agrega tus cauchos')
 
