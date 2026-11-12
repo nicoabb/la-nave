@@ -42,7 +42,13 @@ export function FormCuenta() {
         await alIniciarSesion(data.user.id)
         avisar('Sesión iniciada', 'Tus datos se están sincronizando.')
       } else {
-        const { data, error } = await supabase!.auth.signUp({ email: correo.trim(), password: clave })
+        // El enlace del correo vuelve a la app (no a la raíz del dominio)
+        const volverA = window.location.origin + window.location.pathname
+        const { data, error } = await supabase!.auth.signUp({
+          email: correo.trim(),
+          password: clave,
+          options: { emailRedirectTo: volverA },
+        })
         if (error) return setError(traducir(error.message))
         if (data.session) {
           await alIniciarSesion(data.user!.id)
