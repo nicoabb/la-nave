@@ -63,6 +63,9 @@ async function ejecutar() {
 
   fijarEstado('sincronizando')
   try {
+    // Si la cuenta se reinició desde otro dispositivo, aquí se descarta lo local
+    // ANTES de subir, para que los datos viejos no vuelvan a la nube.
+    await revisarReinicio(sesion.user.id)
     await subir(sesion.user.id)
     await bajar(sesion.user.id)
     fijarEstado('listo')
@@ -178,6 +181,75 @@ export async function urlComprobante(path: string): Promise<string> {
   return data.signedUrl
 }
 
+// ---------- Empezar de cero ----------
+
+/** Marca de reinicio guardada en la cuenta (user_metadata), visible desde todos los dispositivos. */
+async function marcaReinicio(): Promise<string | null> {
+  const { data } = await supabase!.auth.getUser()
+  return (data.user?.user_metadata?.reinicio as string | undefined) ?? null
+}
+
+async function revisarReinicio(uid: string) {
+  const marca = await marcaReinicio()
+  if (!marca) return
+  const vista = await leerMeta<string>('reinicio_visto')
+  if (vista === marca) return
+  // Este dispositivo tenía datos de antes del reinicio: se descartan
+  await borrarDatosLocales()
+  await guardarMeta('usuario_local', uid)
+  await guardarMeta('reinicio_visto', marca)
+}
+
+/** Borra todos los archivos del usuario en un bucket (incluidas subcarpetas). */
+async function vaciarCarpeta(bucket: string, carpeta: string) {
+  const { data, error } = await supabase!.storage.from(bucket).list(carpeta, { limit: 1000 })
+  if (error) throw new Error(`${bucket}: ${error.message}`)
+  const archivos: string[] = []
+  for (const e of data ?? []) {
+    if (e.id === null) await vaciarCarpeta(bucket, `${carpeta}/${e.name}`) // es una carpeta
+    else archivos.push(`${carpeta}/${e.name}`)
+  }
+  if (archivos.length) {
+    const { error: e2 } = await supabase!.storage.from(bucket).remove(archivos)
+    if (e2) throw new Error(`${bucket}: ${e2.message}`)
+  }
+}
+
+/**
+ * Borra TODO lo de la cuenta (datos, fotos y comprobantes) en la nube y en este
+ * dispositivo. Los demás dispositivos se limpian en su siguiente sincronización.
+ */
+export async function empezarDeCero() {
+  if (!supabase) {
+    await borrarDatosLocales()
+    return
+  }
+  const { data } = await supabase.auth.getSession()
+  const sesion = data.session
+  if (!sesion) {
+    await borrarDatosLocales()
+    return
+  }
+  if (!navigator.onLine) throw new Error('Necesitas conexión para borrar los datos de tu cuenta.')
+  const uid = sesion.user.id
+
+  for (const t of TABLAS_DATOS) {
+    // RLS limita el borrado a las filas propias
+    const { error } = await supabase.from(t).delete().not('id', 'is', null)
+    if (error) throw new Error(`${t}: ${error.message}`)
+  }
+  await vaciarCarpeta('fotos', uid)
+  await vaciarCarpeta('comprobantes', uid)
+
+  const marca = new Date().toISOString()
+  const { error } = await supabase.auth.updateUser({ data: { reinicio: marca } })
+  if (error) throw new Error(error.message)
+
+  await borrarDatosLocales()
+  await guardarMeta('usuario_local', uid)
+  await guardarMeta('reinicio_visto', marca)
+}
+
 // ---------- Sesión ----------
 
 /** Borra todo lo local (al cambiar de cuenta o cerrar sesión). */
@@ -212,6 +284,9 @@ export async function alIniciarSesion(uid: string) {
     }
   }
   await guardarMeta('usuario_local', uid)
+  // Un inicio de sesión nuevo parte del estado actual de la cuenta
+  const marca = await marcaReinicio()
+  if (marca) await guardarMeta('reinicio_visto', marca)
   await sincronizar()
 }
 

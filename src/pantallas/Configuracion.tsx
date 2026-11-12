@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ListChecks, Trash2 } from 'lucide-react'
+import { empezarDeCero } from '../sync/motor'
 import { Campo } from '../components/Campo'
 import { SeccionCuenta } from '../components/Cuenta'
 import { FormVehiculo } from '../components/FormVehiculo'
@@ -9,6 +10,34 @@ import { BotonExportar, BotonRestaurar } from '../components/Respaldo'
 import { useCorrecciones, useKilometraje, useUmbralPronto, useVehiculoActivo, useVidaUtilCauchos } from '../db/hooks'
 import { guardarMeta } from '../db/repo'
 import { fechaLista, km, leerEntero, numero } from '../lib/formato'
+
+function BotonEmpezarDeCero() {
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState('')
+
+  async function borrarTodo() {
+    const escrito = window.prompt('Esto borra TODO y no se puede deshacer.\n\nEscribe BORRAR para confirmar:')
+    if (escrito?.trim().toUpperCase() !== 'BORRAR') return
+    setOcupado(true)
+    setError('')
+    try {
+      await empezarDeCero()
+      window.location.replace(window.location.pathname) // vuelve a la pantalla de bienvenida
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <>
+      {error && <p className="error" role="alert">No se pudo completar: {error}</p>}
+      <button className="btn btn--bloque btn--peligro" disabled={ocupado} onClick={borrarTodo}>
+        <Trash2 size={18} strokeWidth={1.8} /> {ocupado ? 'Borrando…' : 'Borrar todo y empezar de cero'}
+      </button>
+    </>
+  )
+}
 
 export default function Configuracion() {
   const vehiculo = useVehiculoActivo()
@@ -103,6 +132,15 @@ export default function Configuracion() {
         </span>
         <BotonExportar />
         <BotonRestaurar />
+      </section>
+
+      <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid var(--coral)' }}>
+        <h2 className="titulo-seccion" style={{ color: 'var(--coral)' }}>Empezar de cero</h2>
+        <span className="muted mini">
+          Borra todos tus datos, fotos y comprobantes: en tu cuenta, en este dispositivo y en los demás donde tengas la
+          sesión abierta. No se puede deshacer; si quieres, descarga antes un respaldo.
+        </span>
+        <BotonEmpezarDeCero />
       </section>
 
       {corrigiendo && <HojaCorreccion vehiculoId={vehiculo.id} kmEstimado={kmTotal} onCerrar={() => setCorrigiendo(false)} />}
