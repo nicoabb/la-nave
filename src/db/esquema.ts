@@ -150,6 +150,18 @@ export interface Deseo extends Base {
   visit_id: string | null
 }
 
+/** Lo que no es gasolina ni taller: precio de compra, traspaso, otros. */
+export interface Gasto extends Base {
+  vehicle_id: string
+  fecha: string
+  categoria: 'compra_papeles' | 'otro'
+  descripcion: string
+  monto: number
+  moneda: Moneda
+  tasa_ves_usd: number | null
+  monto_usd: number | null
+}
+
 /** Valores sueltos del dispositivo (última tasa usada, etc.). No se sincroniza. */
 export interface Meta {
   clave: string
@@ -175,6 +187,7 @@ export const db = new Dexie('la-nave') as Dexie & {
   tires: Table<Caucho, string>
   tire_events: Table<EventoCaucho, string>
   wishlist_items: Table<Deseo, string>
+  expenses: Table<Gasto, string>
   meta: Table<Meta, string>
   fotos: Table<Foto, string>
 }
@@ -201,6 +214,10 @@ db.version(3).stores({
   wishlist_items: 'id, vehicle_id, updated_at',
 })
 
+db.version(4).stores({
+  expenses: 'id, vehicle_id, updated_at',
+})
+
 export const TABLAS_DATOS = [
   'vehicles',
   'odometer_corrections',
@@ -213,4 +230,5 @@ export const TABLAS_DATOS = [
   'tires',
   'tire_events',
   'wishlist_items',
+  'expenses',
 ] as const
