@@ -25,6 +25,7 @@ export async function asegurarTareas(v: Vehiculo) {
           es_revision: p.es_revision,
           fuente: p.fuente,
           costo_estimado_usd: null,
+          pospuesta_hasta: null,
         })
       }
     }

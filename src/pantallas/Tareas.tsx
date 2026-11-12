@@ -124,7 +124,7 @@ export function HojaTarea({ vehiculoId, tarea, onCerrar }: { vehiculoId: string;
       costo_estimado_usd: costo.trim() ? leerNumero(costo) : null,
     }
     if (tarea) await actualizar(db.maintenance_tasks, tarea.id, datos)
-    else await crear(db.maintenance_tasks, { vehicle_id: vehiculoId, clave: null, fuente: '', ...datos })
+    else await crear(db.maintenance_tasks, { vehicle_id: vehiculoId, clave: null, fuente: '', pospuesta_hasta: null, ...datos })
     avisar(tarea ? 'Tarea actualizada' : 'Tarea creada')
     onCerrar()
   }

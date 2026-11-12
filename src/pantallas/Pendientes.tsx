@@ -22,9 +22,11 @@ export default function Pendientes() {
   const nuevoDesdeInicio = (useLocation().state as { nuevo?: boolean } | null)?.nuevo
   const [hoja, setHoja] = useState<Deseo | 'nuevo' | null>(nuevoDesdeInicio ? 'nuevo' : null)
   const [acciones, setAcciones] = useState<EstadoTarea<TareaMantenimiento> | null>(null)
-  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({ urgente: true, pronto: true, 'en-orden': false, hechos: false })
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({ urgente: true, pronto: true, 'en-orden': false, pospuestas: false, hechos: false })
 
-  const items = datos?.items ?? []
+  // Las pospuestas van aparte y no suman al total hasta su fecha
+  const items = (datos?.items ?? []).filter((i) => !i.pospuestaHasta)
+  const pospuestas = (datos?.items ?? []).filter((i) => i.pospuestaHasta)
   const activos = items.filter((i) => i.estado !== 'en-orden')
   const totalUsd = activos.reduce((s, i) => s + (i.costoUsd ?? 0), 0)
   const sinEstimado = activos.filter((i) => i.costoUsd == null).length
@@ -80,6 +82,22 @@ export default function Pendientes() {
           </section>
         )
       })}
+
+      {pospuestas.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="grupo__titulo" aria-expanded={abiertos.pospuestas} onClick={() => setAbiertos((a) => ({ ...a, pospuestas: !a.pospuestas }))}>
+            <span className="titulo-seccion muted" style={{ flex: 1 }}>Pospuestas · {pospuestas.length}</span>
+            <ChevronDown size={18} strokeWidth={1.8} color="var(--text-muted)" style={{ transform: abiertos.pospuestas ? 'rotate(180deg)' : undefined }} aria-hidden />
+          </button>
+          {abiertos.pospuestas && (
+            <div className="tarjeta lista" style={{ paddingTop: 4, paddingBottom: 4 }}>
+              {pospuestas.map((i) => (
+                <FilaPendiente key={i.clave} item={{ ...i, detalle: `Pospuesta hasta ${fechaLista(i.pospuestaHasta!)} · ${i.detalle}` }} onClick={() => abrir(i)} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {datos && datos.hechos.length > 0 && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

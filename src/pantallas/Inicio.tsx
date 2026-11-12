@@ -89,7 +89,7 @@ export default function Inicio() {
         </div>
         {pendientes && pendientes.items.length === 0 && <p className="muted" style={{ margin: '12px 0 0' }}>Todavía no hay tareas.</p>}
         <div className="lista" style={{ marginTop: 4 }}>
-          {pendientes?.items.slice(0, 3).map((i) => (
+          {pendientes?.items.filter((i) => !i.pospuestaHasta).slice(0, 3).map((i) => (
             <button key={i.clave} className="lista__fila" onClick={() => (i.estadoTarea ? setAcciones(i.estadoTarea) : navegar('/pendientes'))}>
               <PuntoEstado estado={i.estado} />
               <span style={{ flex: 1, minWidth: 0 }}>

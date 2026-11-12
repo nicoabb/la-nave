@@ -31,6 +31,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: 'index.html',
+        // Manejo de notificaciones push (fase 7)
+        importScripts: ['sw-push.js'],
       },
     }),
   ],

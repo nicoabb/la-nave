@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProveedorAvisos } from './components/Aviso'
 import { BarraInferior } from './components/BarraInferior'
 import { Sincronizador } from './components/Sincronizador'
+import { ProgramadorAvisos } from './components/ProgramadorAvisos'
 import { useVehiculo, VehiculoContexto } from './db/hooks'
 import Bienvenida from './pantallas/Bienvenida'
 import Inicio from './pantallas/Inicio'
@@ -44,6 +45,7 @@ export default function App() {
       <ProveedorAvisos>
       <div className="app">
         <Sincronizador />
+        <ProgramadorAvisos />
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/gasolina" element={<Gasolina />} />

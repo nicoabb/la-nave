@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ListChecks, Trash2 } from 'lucide-react'
 import { empezarDeCero } from '../sync/motor'
 import { Campo } from '../components/Campo'
 import { SeccionCuenta } from '../components/Cuenta'
+import { SeccionAvisos } from '../components/SeccionAvisos'
 import { FormVehiculo } from '../components/FormVehiculo'
 import { HojaCorreccion } from '../components/HojaCorreccion'
 import { BotonExportar, BotonRestaurar } from '../components/Respaldo'
@@ -59,6 +60,11 @@ export default function Configuracion() {
       <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2 className="titulo-seccion">Cuenta y sincronización</h2>
         <SeccionCuenta />
+      </section>
+
+      <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h2 className="titulo-seccion">Avisos</h2>
+        <SeccionAvisos />
       </section>
 
       <section className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

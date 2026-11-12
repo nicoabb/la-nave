@@ -42,7 +42,7 @@ create table if not exists public.maintenance_tasks (
   vehicle_id uuid, clave text, nombre text, sistema text, intervalo_km double precision,
   intervalo_dias integer, ultima_km_inicial double precision, ultima_fecha_inicial date,
   activa boolean not null default true, notas text, es_revision boolean not null default false, fuente text,
-  costo_estimado_usd double precision
+  costo_estimado_usd double precision, pospuesta_hasta date
 );
 create table if not exists public.service_visits (
   vehicle_id uuid, fecha date, km double precision, titulo text, taller text, proveedor text,
@@ -101,6 +101,7 @@ alter table public.tire_events add column if not exists monto_usd double precisi
 alter table public.expenses add column if not exists tasa_origen text;
 alter table public.expenses add column if not exists task_id uuid;
 alter table public.maintenance_tasks add column if not exists costo_estimado_usd double precision;
+alter table public.maintenance_tasks add column if not exists pospuesta_hasta date;
 
 -- Columnas comunes, seguridad (RLS) y disparador en cada tabla
 do $$
@@ -178,3 +179,43 @@ create policy "comprobantes: subir los propios" on storage.objects for insert to
   with check (bucket_id = 'comprobantes' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "comprobantes: borrar los propios" on storage.objects for delete to authenticated
   using (bucket_id = 'comprobantes' and (storage.foldername(name))[1] = (select auth.uid())::text);
+-- ---------------------------------------------------------------
+-- Avisos (fase 7). La app calcula cuándo avisar y lo guarda aquí;
+-- la función 'avisos' (diaria) envía lo que toca y lo marca enviado.
+-- ---------------------------------------------------------------
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.avisos_programados (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  clave text not null,
+  titulo text not null,
+  cuerpo text not null,
+  fecha_envio date not null,
+  enviado boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (user_id, clave)
+);
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['push_subscriptions', 'avisos_programados'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "solo lo propio" on public.%I', t);
+    execute format(
+      'create policy "solo lo propio" on public.%I for all to authenticated '
+      'using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
+    execute format('revoke all on public.%I from anon', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+  end loop;
+end;
+$$;

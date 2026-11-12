@@ -13,6 +13,7 @@ import {
 } from './esquema'
 import { evaluarCaucho, TAREA_DE_EVENTO, VIDA_UTIL_KM, type EstadoCaucho } from '../lib/cauchos'
 import type { Estado } from '../lib/tareas'
+import { estaPospuesta } from '../lib/avisos'
 import { analizar, calcularTramos, kmPorDia, ordenar } from '../lib/gasolina'
 import { estimarKmEnFecha, kmActual } from '../lib/kilometraje'
 import { hoyISO } from '../lib/fechas'
@@ -246,6 +247,8 @@ export interface ItemPendiente {
   tarea?: TareaMantenimiento
   estadoTarea?: EstadoTarea<TareaMantenimiento>
   deseo?: Deseo
+  /** Pospuesta: no cuenta en Urgente/Pronto hasta su fecha */
+  pospuestaHasta?: string
 }
 
 const ESTADO_PRIORIDAD: Record<Prioridad, Estado> = { rojo: 'urgente', amarillo: 'pronto', verde: 'en-orden' }
@@ -274,6 +277,7 @@ export function usePendientes(vehiculoId: string) {
       costoUsd: mant.costo(e.tarea.id)?.usd ?? null,
       tarea: e.tarea,
       estadoTarea: e,
+      pospuestaHasta: estaPospuesta(e.tarea) ? e.tarea.pospuesta_hasta! : undefined,
     }))
     const PROGRESO: Record<Prioridad, number> = { rojo: 1, amarillo: umbral, verde: 0 }
     const puntuales: ItemPendiente[] = deseos

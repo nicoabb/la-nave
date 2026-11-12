@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, ChevronRight, CircleDot, ClipboardCheck, Pencil, Plus, Receipt, Wrench } from 'lucide-react'
+import { AlarmClock, AlarmClockOff, CalendarCheck, ChevronRight, CircleDot, ClipboardCheck, Pencil, Plus, Receipt, Wrench } from 'lucide-react'
 import { db, type TareaMantenimiento, type TipoEventoCaucho, type TipoRevision } from '../db/esquema'
 import { useKilometraje, useMantenimiento, useVehiculoActivo } from '../db/hooks'
-import { crear } from '../db/repo'
+import { actualizar, crear } from '../db/repo'
+import { estaPospuesta } from '../lib/avisos'
 import { hoyISO } from '../lib/fechas'
 import { dinero, fechaLista, fechaTarjeta, km, leerEntero, numero } from '../lib/formato'
 import { describirIntervalo, type EstadoTarea } from '../lib/tareas'
@@ -15,6 +16,12 @@ import { ChipEstado } from './comunes'
 import { Hoja } from './Hoja'
 import { HojaGasto } from './HojaGasto'
 
+const sumarDiasHoy = (dias: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + dias)
+  return hoyISO(d)
+}
+
 /** Tareas que se registran como evento de cauchos. */
 const EVENTO_DE_TAREA: Record<string, TipoEventoCaucho> = {
   presion_cauchos: 'presion',
@@ -24,7 +31,7 @@ const EVENTO_DE_TAREA: Record<string, TipoEventoCaucho> = {
 /** Tareas con formulario de revisión propio (checklist, mediciones). */
 const CON_FORMULARIO: Record<string, TipoRevision> = { revision_semanal: 'semanal_capo', bateria: 'bateria' }
 
-type Modo = 'menu' | 'hecha' | 'visita' | 'gasto' | 'editar'
+type Modo = 'menu' | 'hecha' | 'visita' | 'gasto' | 'editar' | 'posponer'
 
 /**
  * Lo que se puede hacer con una tarea periódica: marcarla hecha, sumarla a una
@@ -40,6 +47,12 @@ export function HojaAccionesTarea({ estado: e, onCerrar }: { estado: EstadoTarea
   const ir = (ruta: string) => {
     onCerrar()
     navegar(ruta)
+  }
+  const avisar = useAviso()
+  async function posponer(hasta: string | null) {
+    await actualizar(db.maintenance_tasks, t.id, { pospuesta_hasta: hasta })
+    avisar(hasta ? 'Tarea pospuesta' : 'Posposición quitada', hasta ? `Hasta el ${fechaLista(hasta)}` : undefined)
+    onCerrar()
   }
 
   if (modo === 'editar') return <HojaTarea vehiculoId={vehiculo.id} tarea={t} onCerrar={onCerrar} />
@@ -88,7 +101,28 @@ export function HojaAccionesTarea({ estado: e, onCerrar }: { estado: EstadoTarea
           <Accion Icono={Plus} texto="Registrar visita nueva al taller" onClick={() => ir(`/taller/visita/nueva?tarea=${t.id}`)} />
           <Accion Icono={Receipt} texto="Registrar el pago como gasto" detalle="Para lo que no es taller, como el seguro" onClick={() => setModo('gasto')} />
           {t.clave && EVENTO_DE_TAREA[t.clave] && <Accion Icono={CircleDot} texto="Ir a Cauchos" onClick={() => ir('/taller/cauchos')} />}
+          {estaPospuesta(t) ? (
+            <Accion Icono={AlarmClockOff} texto="Quitar la posposición" detalle={`Pospuesta hasta ${fechaLista(t.pospuesta_hasta!)}`} onClick={() => posponer(null)} />
+          ) : (
+            <Accion Icono={AlarmClock} texto="Posponer" detalle="Por ejemplo, mientras lo consultas con el mecánico" onClick={() => setModo('posponer')} />
+          )}
           <Accion Icono={Pencil} texto="Editar tarea" detalle="Frecuencia, última vez, estimado o desactivarla" onClick={() => setModo('editar')} />
+        </>
+      )}
+
+      {modo === 'posponer' && (
+        <>
+          <span className="muted mini">No saldrá en Urgente ni Pronto, ni te avisará, hasta esa fecha.</span>
+          {[
+            ['2 semanas', 14],
+            ['1 mes', 30],
+            ['3 meses', 91],
+          ].map(([texto, dias]) => (
+            <button key={texto} className="btn btn--bloque" onClick={() => posponer(sumarDiasHoy(dias as number))}>
+              {texto} (hasta el {fechaLista(sumarDiasHoy(dias as number))})
+            </button>
+          ))}
+          <button className="btn btn--bloque" onClick={() => setModo('menu')}>Volver</button>
         </>
       )}
 

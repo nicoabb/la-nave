@@ -67,6 +67,8 @@ export interface TareaMantenimiento extends Base {
   fuente: string // 'Manual' | 'Usuario' | 'Sugerido' | ''
   /** Estimado manual en USD, cuando aún no hay historial de costos */
   costo_estimado_usd: number | null
+  /** Hasta esta fecha no sale en Urgente/Pronto ni avisa (p. ej. mientras se consulta al mecánico) */
+  pospuesta_hasta: string | null
 }
 
 export interface VisitaTaller extends Base {
@@ -291,6 +293,15 @@ db.version(7)
     })
     await tx.table('expenses').toCollection().modify((g) => {
       if (g.task_id === undefined) g.task_id = null
+    })
+  })
+
+// v8: posponer tareas
+db.version(8)
+  .stores({})
+  .upgrade(async (tx) => {
+    await tx.table('maintenance_tasks').toCollection().modify((t) => {
+      if (t.pospuesta_hasta === undefined) t.pospuesta_hasta = null
     })
   })
 
